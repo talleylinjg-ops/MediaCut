@@ -14,6 +14,7 @@
         <el-table-column prop="count" label="调用次数" />
         <el-table-column prop="success" label="成功" />
         <el-table-column prop="failed" label="失败" />
+        <el-table-column prop="revenue" label="收入(点)" />
       </el-table>
     </el-main>
   </el-container>

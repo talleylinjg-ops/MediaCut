@@ -36,6 +36,14 @@ def update_developer(developer_id: int, payload: DeveloperUpdate, db: Session = 
         if payload.quota_limit < 0:
             raise HTTPException(status_code=400, detail="invalid quota limit")
         developer.quota_limit = payload.quota_limit
+    if payload.billing_type is not None:
+        if payload.billing_type not in ("internal", "external"):
+            raise HTTPException(status_code=400, detail="invalid billing type")
+        developer.billing_type = payload.billing_type
+    if payload.recharge is not None:
+        if payload.recharge < 0:
+            raise HTTPException(status_code=400, detail="invalid recharge amount")
+        developer.balance += payload.recharge
     db.commit()
     db.refresh(developer)
     return developer
@@ -49,11 +57,12 @@ def get_stats(db: Session = Depends(get_db)):
             func.count(ApiCallLog.id).label("count"),
             func.sum(case((ApiCallLog.status_code < 400, 1), else_=0)).label("success"),
             func.sum(case((ApiCallLog.status_code >= 400, 1), else_=0)).label("failed"),
+            func.sum(case((ApiCallLog.status_code < 400, ApiCallLog.cost), else_=0)).label("revenue"),
         )
         .group_by(ApiCallLog.endpoint)
         .all()
     )
     return [
-        StatOut(endpoint=endpoint, count=count, success=success or 0, failed=failed or 0)
-        for endpoint, count, success, failed in rows
+        StatOut(endpoint=endpoint, count=count, success=success or 0, failed=failed or 0, revenue=revenue or 0)
+        for endpoint, count, success, failed, revenue in rows
     ]

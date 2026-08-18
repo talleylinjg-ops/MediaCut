@@ -9,7 +9,9 @@
 - **AI 能力**（ModelScope）：AI 抠图、图像增强、语音转文字（ASR）、文字转语音（TTS）
 - **API 管理**：开发者注册、API Key 认证、每日配额限流、调用统计
 - **异步任务**：AI 耗时任务异步执行，任务状态轮询
-- **可视化管理后台**：Vue3 界面管理开发者、配额、统计
+- **计费系统**：内部调用按每日配额免费，对外按接口价格扣减预充值余额，余额不足返回 402
+- **对外客户门户**：产品介绍、定价、申请注册、接入文档、客户控制台（查看余额/配额/调用记录/重置 Key）
+- **可视化管理后台**：Vue3 界面管理开发者、配额、计费类型、充值、统计
 
 ## 技术栈
 
@@ -32,17 +34,18 @@ bash start.sh
 ```
 
 启动后：
-- 管理后台：http://localhost:5173 （默认账号 admin / admin123，生产请修改）
+- 客户门户：http://localhost:5173 （首页 / 定价 / 申请 / 接入文档 / 客户控制台）
+- 管理后台：http://localhost:5173/developers （默认账号 admin / admin123，生产请修改）
 - Swagger 文档：http://localhost:8000/docs
 - 健康检查：http://localhost:8000/health
 
 ## 开发者对接示例
 
 ```bash
-# 1. 注册获取 API Key
+# 1. 注册获取 API Key（需设置密码，用于登录客户控制台）
 curl -X POST http://localhost:8000/api/v1/dev/register \
   -H "Content-Type: application/json" \
-  -d '{"name": "我的应用", "email": "dev@example.com"}'
+  -d '{"name": "我的应用", "email": "dev@example.com", "password": "secret123"}'
 
 # 2. 图片剪辑（灰度 + 转 JPEG）
 curl -X POST http://localhost:8000/api/v1/image/edit \
@@ -73,17 +76,28 @@ curl -H "Authorization: Bearer <你的API_KEY>" \
 
 | 方法 | 路径 | 认证 | 说明 |
 |------|------|------|------|
-| POST | /api/v1/dev/register | 无 | 开发者注册 |
-| POST | /api/v1/dev/reset-key | 无 | 重置 API Key |
-| POST | /api/v1/image/edit | API Key | 图片剪辑（同步） |
-| POST | /api/v1/audio/edit | API Key | 音频剪辑（同步） |
-| POST | /api/v1/ai/{task_type} | API Key | AI 任务（matting/enhance/asr/tts） |
+| POST | /api/v1/dev/register | 无 | 开发者注册（name/email/password） |
+| POST | /api/v1/dev/client/login | 无 | 客户登录（邮箱+密码，返回 JWT） |
+| GET | /api/v1/dev/client/me | 客户 JWT | 账户信息（计费类型/余额/配额） |
+| GET | /api/v1/dev/client/logs | 客户 JWT | 最近调用记录（含费用） |
+| POST | /api/v1/dev/client/reset-key | 客户 JWT | 重置 API Key |
+| POST | /api/v1/image/edit | API Key | 图片剪辑（同步，1 点/次） |
+| POST | /api/v1/audio/edit | API Key | 音频剪辑（同步，2 点/次） |
+| POST | /api/v1/ai/{task_type} | API Key | AI 任务（matting=10/enhance=15/asr=10/tts=5） |
 | GET | /api/v1/tasks/{task_id} | API Key | 任务状态 |
 | GET | /api/v1/result/{task_id}/{file} | API Key | 结果下载 |
 | POST | /api/v1/admin/login | 无 | 管理员登录 |
 | GET | /api/v1/admin/developers | 管理员 | 开发者列表 |
-| PUT | /api/v1/admin/developers/{id} | 管理员 | 修改状态/配额 |
-| GET | /api/v1/admin/stats | 管理员 | 调用统计 |
+| PUT | /api/v1/admin/developers/{id} | 管理员 | 修改状态/配额/计费类型/充值 |
+| GET | /api/v1/admin/stats | 管理员 | 调用统计（含收入） |
+
+## 计费说明
+
+- 开发者分为两种计费类型：
+  - `internal`（内部免费）：按每日配额限流，不扣费
+  - `external`（对外计费）：按接口价格从预充值 `balance`（点数）扣减
+- 余额不足时接口返回 `402 Payment Required`，当日配额用完返回 `429`
+- 充值通过管理后台「开发者管理 → 充值」或 `PUT /admin/developers/{id}` 接口完成
 
 ## 测试
 

@@ -7,13 +7,24 @@ import Login from './views/Login.vue'
 import Developers from './views/Developers.vue'
 import Stats from './views/Stats.vue'
 import ApiKeys from './views/ApiKeys.vue'
+import PortalHome from './views/portal/PortalHome.vue'
+import PortalPricing from './views/portal/PortalPricing.vue'
+import PortalRegister from './views/portal/PortalRegister.vue'
+import PortalDocs from './views/portal/PortalDocs.vue'
+import ClientLogin from './views/portal/ClientLogin.vue'
+import ClientConsole from './views/portal/ClientConsole.vue'
 
 const routes = [
+  { path: '/', component: PortalHome },
+  { path: '/pricing', component: PortalPricing },
+  { path: '/register', component: PortalRegister },
+  { path: '/docs', component: PortalDocs },
+  { path: '/client/login', component: ClientLogin },
+  { path: '/client/console', component: ClientConsole, meta: { requiresClient: true } },
   { path: '/login', component: Login },
   { path: '/developers', component: Developers, meta: { requiresAuth: true } },
   { path: '/stats', component: Stats, meta: { requiresAuth: true } },
-  { path: '/api-keys', component: ApiKeys },
-  { path: '/', redirect: '/developers' }
+  { path: '/api-keys', component: ApiKeys }
 ]
 
 const router = createRouter({
@@ -22,12 +33,19 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const token = localStorage.getItem('admin_token')
-  if (to.meta.requiresAuth && !token) {
+  const adminToken = localStorage.getItem('admin_token')
+  const clientToken = localStorage.getItem('client_token')
+  if (to.meta.requiresAuth && !adminToken) {
     return '/login'
   }
-  if (to.path === '/login' && token) {
+  if (to.meta.requiresClient && !clientToken) {
+    return '/client/login'
+  }
+  if (to.path === '/login' && adminToken) {
     return '/developers'
+  }
+  if (to.path === '/client/login' && clientToken) {
+    return '/client/console'
   }
   return true
 })

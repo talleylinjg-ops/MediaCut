@@ -2,7 +2,7 @@
 
 ## 概述
 
-媒体剪辑 API 服务平台是一个对外提供媒体剪辑能力的开放 API 平台。它将 Pillow、OpenCV、FFmpeg 处理引擎与 ModelScope AI 能力封装为标准化 REST API，使第三方开发者能够通过申请 API Key 的方式调用图片剪辑、音频剪辑和 AI 智能处理接口。系统内置开发者注册、API Key 认证、每日配额限流、异步任务队列、调用统计与可视化管理后台，满足「申请对接 → 获取 Key → 调用接口」的完整服务闭环。
+媒体剪辑 API 服务平台是一个对外提供媒体剪辑能力的开放 API 平台。它将 Pillow、OpenCV、FFmpeg 处理引擎与 ModelScope AI 能力封装为标准化 REST API，使第三方开发者能够通过申请 API Key 的方式调用图片剪辑、音频剪辑和 AI 智能处理接口。系统内置开发者注册、API Key 认证、每日配额限流、双轨计费、异步任务队列、调用统计、对外客户门户与可视化管理后台，满足「申请对接 → 获取 Key → 调用接口 → 计费结算」的完整服务闭环。
 
 ## 技术栈
 
@@ -39,27 +39,30 @@ project-root/
 │   │   ├── models.py       # ORM 数据模型
 │   │   ├── schemas.py      # Pydantic 请求/响应模型
 │   │   ├── core/           # 横切关注点
-│   │   │   ├── security.py     # API Key、管理员 JWT
-│   │   │   ├── quota.py        # 配额限流
+│   │   │   ├── security.py     # API Key、管理员/客户 JWT、密码哈希
+│   │   │   ├── quota.py        # 配额限流与余额扣减
+│   │   │   ├── billing.py      # 价格表与计费类型
 │   │   │   └── task_queue.py   # 异步任务队列
 │   │   ├── services/       # 业务逻辑
 │   │   │   ├── image_service.py # Pillow/OpenCV 图片剪辑
 │   │   │   ├── audio_service.py # FFmpeg 音频剪辑
 │   │   │   └── ai_service.py    # ModelScope AI 封装
 │   │   └── api/            # 路由层
-│   │       ├── dev.py      # 开发者注册/Key 管理
+│   │       ├── dev.py      # 开发者注册/客户登录/Key 管理
 │   │       ├── image.py    # 图片剪辑接口
 │   │       ├── audio.py    # 音频剪辑接口
 │   │       ├── ai.py       # AI 任务提交
 │   │       ├── tasks.py    # 任务状态查询
 │   │       ├── result.py   # 结果下载
-│   │       └── admin.py    # 管理后台 API
+│   │       └── admin.py    # 管理后台 API（含计费/充值）
 │   ├── storage/            # 上传与结果文件存储
 │   └── tests/              # 单元与集成测试
-├── frontend/               # 管理后台（Vite + Vue3）
+├── frontend/               # Vue3 应用（Vite）
 │   └── src/
-│       ├── views/          # 登录/开发者/统计/API 申请页
-│       └── api/index.js    # 后端请求封装
+│       ├── views/          # 管理后台：登录/开发者/统计/API 申请页
+│       ├── views/portal/   # 客户门户：首页/定价/注册/文档/控制台
+│       ├── components/     # 公共组件（门户导航）
+│       └── api/index.js    # 后端请求封装（admin/client 双 token）
 ├── start.sh                # 前后端启动脚本
 └── .env.example            # 环境变量模板
 ```
@@ -78,10 +81,10 @@ project-root/
 **依赖**: core 模块、services 模块、schemas、models
 **被依赖**: FastAPI 应用入口
 
-### 认证与配额
-**目的**: API Key 生成与校验、管理员 JWT、每日配额限流
+### 认证、配额与计费
+**目的**: API Key 生成与校验、管理员/客户 JWT、每日配额限流、双轨计费与余额扣减
 **位置**: `backend/app/core/`
-**关键文件**: `security.py`, `quota.py`
+**关键文件**: `security.py`, `quota.py`, `billing.py`
 **依赖**: models、config
 **被依赖**: 全部受保护 API 路由
 
@@ -123,11 +126,12 @@ flowchart LR
 
     subgraph Frontend
         VueAdmin[Vue3 管理后台]
+        VuePortal[Vue3 客户门户]
     end
 
     subgraph Backend
         API[FastAPI 路由层]
-        Auth[认证与配额]
+        Auth[认证/配额/计费]
         Img[图片剪辑服务]
         Aud[音频剪辑服务]
         AI[AI 服务]
@@ -141,6 +145,8 @@ flowchart LR
 
     Client --> API
     Admin --> VueAdmin
+    Client --> VuePortal[Vue3 客户门户]
+    VuePortal --> API
     VueAdmin --> API
     API --> Auth
     Auth --> Img
@@ -197,19 +203,22 @@ sequenceDiagram
     Auth->>DB: 查询 api_key_hash
     DB-->>Auth: developer
     Auth-->>API: developer（校验失败返回 401）
-    API->>Quota: check_quota(developer)
+    API->>Quota: check_quota(developer, price)
+    Quota->>Quota: external 且 balance < price 则返回 402
     Quota->>DB: 校验/重置当日配额
     API->>API: 执行剪辑操作
-    API->>Quota: consume_quota(developer)
+    API->>Quota: consume_quota(developer, price)
+    Quota->>DB: quota_used+1，external 扣减 balance
     API-->>Client: 200 + 处理结果 + X-Remaining-Quota
 ```
 
 ## 关键流程
 
 ### 开发者对接流程
-1. 开发者调用 `POST /api/v1/dev/register` 提交名称与邮箱，系统生成 32 位随机 API Key 并仅以 SHA-256 哈希入库，明文只返回一次
-2. 开发者携带 `Authorization: Bearer <key>` 调用剪辑接口，系统校验 Key 有效性并检查每日配额
-3. 每次调用成功后配额计数 +1，响应头 `X-Remaining-Quota` 返回剩余额度，超出返回 429
+1. 开发者调用 `POST /api/v1/dev/register` 提交名称、邮箱与密码，系统生成 32 位随机 API Key 并仅以 SHA-256 哈希入库，明文只返回一次
+2. 开发者携带 `Authorization: Bearer <key>` 调用剪辑接口，系统校验 Key 有效性、检查每日配额，并对 `external` 账户校验余额
+3. 每次调用成功后配额计数 +1，`external` 账户同时扣减接口价格，响应头 `X-Remaining-Quota` 返回剩余额度
+4. `external` 账户余额不足返回 `402`，当日配额用完返回 `429`
 
 ### AI 任务执行流程
 1. 提交 AI 任务后立即返回 `task_id`，任务以 pending 状态入库
@@ -224,3 +233,5 @@ sequenceDiagram
 3. **API Key 哈希存储**：数据库仅保存 SHA-256 哈希，明文 Key 在注册时一次性返回，降低泄露风险
 4. **AI 凭证占位符**：`MODELSCOPE_API_TOKEN` 从环境变量读取，未配置时 AI 接口返回 503 而非静默失败
 5. **前端反向代理**：Vite dev server 将 `/api` 代理到 `http://localhost:8000`，避免跨域，单端口对外暴露
+6. **计费双轨**：`internal` 开发者仅受每日配额约束（自家免费），`external` 开发者按接口价格表从预充值 `balance` 扣费；费用在调用日志中记录 `cost`，管理统计可汇总收入
+7. **客户密码与 JWT**：注册密码经 PBKDF2 哈希存储，客户控制台接口使用独立 JWT（与 API Key 分离），重置 Key 需登录后操作

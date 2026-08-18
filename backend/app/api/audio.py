@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from app.config import RESULT_DIR
-from app.core import quota
+from app.core import billing, quota
 from app.core.security import authenticate_developer
 from app.database import get_db
 from app.models import Developer
@@ -22,7 +22,8 @@ def audio_edit(
     developer: Developer = Depends(authenticate_developer),
     db: Session = Depends(get_db),
 ):
-    quota.check_quota(db, developer)
+    price = billing.get_price("/api/v1/audio/edit")
+    quota.check_quota(db, developer, price)
     audio_service.validate_audio(file.content_type or "", file.size or 0)
     data = file.file.read()
     try:
@@ -32,7 +33,7 @@ def audio_edit(
 
     source_ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     output_path, output_format = audio_service.process_audio(data, parsed, source_ext, RESULT_DIR)
-    quota.consume_quota(db, developer)
+    quota.consume_quota(db, developer, price)
 
     content_type = {
         "mp3": "audio/mpeg",

@@ -6,9 +6,16 @@ const http = axios.create({
 })
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('admin_token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  if (config.url.startsWith('/dev/client')) {
+    const token = localStorage.getItem('client_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+  } else {
+    const token = localStorage.getItem('admin_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
   }
   return config
 })

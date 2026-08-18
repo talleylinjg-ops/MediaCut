@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import RESULT_DIR, UPLOAD_DIR
-from app.core import quota, task_queue
+from app.core import billing, quota, task_queue
 from app.core.security import authenticate_developer
 from app.database import get_db
 from app.models import Developer
@@ -34,7 +34,8 @@ def submit_task(
     if task_type not in ai_service.TASK_TYPES:
         raise HTTPException(status_code=400, detail=f"unsupported task type: {task_type}")
 
-    quota.check_quota(db, developer)
+    price = billing.get_price(f"/api/v1/ai/{task_type}")
+    quota.check_quota(db, developer, price)
 
     if task_type in ("matting", "enhance"):
         if file is None:
@@ -56,7 +57,7 @@ def submit_task(
     params = {"input_path": input_path} if input_path else {"text": text}
 
     task_id = task_queue.create_task(developer.id, task_type, params)
-    quota.consume_quota(db, developer)
+    quota.consume_quota(db, developer, price)
 
     return TaskSubmitResponse(
         task_id=task_id,

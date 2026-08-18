@@ -19,17 +19,63 @@ def hash_api_key(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(8)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000).hex()
+    return f"{salt}${digest}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+    if not stored or "$" not in stored:
+        return False
+    salt, digest = stored.split("$", 1)
+    calc = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000).hex()
+    return secrets.compare_digest(calc, digest)
+
+
 def create_admin_token() -> str:
-    payload = {"sub": ADMIN_USERNAME, "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)}
+    payload = {"sub": ADMIN_USERNAME, "role": "admin", "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)}
     return encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+def create_client_token(developer_id: int) -> str:
+    payload = {
+        "sub": str(developer_id),
+        "role": "client",
+        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
+    }
+    return encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+def _decode_token(token: str) -> dict:
+    try:
+        return decode(token, JWT_SECRET, algorithms=["HS256"])
+    except InvalidTokenError:
+        raise HTTPException(status_code=401, detail="authentication required")
 
 
 def verify_admin_token(token: str) -> bool:
     try:
-        payload = decode(token, JWT_SECRET, algorithms=["HS256"])
-        return payload.get("sub") == ADMIN_USERNAME
-    except InvalidTokenError:
+        payload = _decode_token(token)
+        return payload.get("role") == "admin" and payload.get("sub") == ADMIN_USERNAME
+    except HTTPException:
         return False
+
+
+def authenticate_client(
+    authorization: str = Header(default=""),
+    db: Session = Depends(get_db),
+) -> models.Developer:
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="authentication required")
+    token = authorization[7:].strip()
+    payload = _decode_token(token)
+    if payload.get("role") != "client":
+        raise HTTPException(status_code=401, detail="authentication required")
+    developer = db.get(models.Developer, int(payload["sub"]))
+    if developer is None or developer.status != "active":
+        raise HTTPException(status_code=401, detail="authentication required")
+    return developer
 
 
 def authenticate_developer(

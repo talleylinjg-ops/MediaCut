@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class DeveloperRegister(BaseModel):
     name: str
     email: str
+    password: str = ""
 
 
 class ApiKeyResponse(BaseModel):
@@ -19,6 +20,8 @@ class DeveloperOut(BaseModel):
     name: str
     email: str
     api_key_hash: str
+    billing_type: str
+    balance: int
     status: str
     quota_limit: int
     quota_used: int
@@ -31,6 +34,8 @@ class DeveloperOut(BaseModel):
 class DeveloperUpdate(BaseModel):
     status: Optional[str] = None
     quota_limit: Optional[int] = None
+    billing_type: Optional[str] = None
+    recharge: Optional[int] = None
 
 
 class TaskOut(BaseModel):
@@ -60,8 +65,40 @@ class AdminToken(BaseModel):
     token: str
 
 
+class ClientLogin(BaseModel):
+    email: str
+    password: str
+
+
+class ClientToken(BaseModel):
+    token: str
+
+
+class ClientOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    billing_type: str
+    balance: int
+    quota_limit: int
+    quota_used: int
+    quota_date: date
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LogOut(BaseModel):
+    endpoint: str
+    status_code: int
+    cost: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class StatOut(BaseModel):
     endpoint: str
     count: int
     success: int
     failed: int
+    revenue: int

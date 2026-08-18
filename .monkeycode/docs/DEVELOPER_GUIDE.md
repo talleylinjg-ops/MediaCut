@@ -8,7 +8,7 @@
 - 提供图片剪辑（裁切、缩放、滤镜、水印、格式转换）API
 - 提供音频剪辑（裁剪、拼接、音量、格式转换）API
 - 提供 ModelScope AI 能力（抠图、增强、ASR、TTS）异步任务 API
-- 管理开发者 API Key、配额与调用统计
+- 管理开发者 API Key、配额、计费类型、余额充值与调用统计
 
 **相关系统**:
 - ModelScope - AI 模型推理依赖
@@ -93,8 +93,16 @@ cd backend && python3 -m pytest tests/ -v
 
 **步骤**:
 1. 若需要开发者认证，路由函数参数加 `developer: Developer = Depends(authenticate_developer)`
-2. 需要配额则调用 `quota.check_quota(db, developer)` 与 `quota.consume_quota(db, developer)`
+2. 需要配额/计费则调用 `quota.check_quota(db, developer, price)` 与 `quota.consume_quota(db, developer, price)`（price 取自 `billing.get_price(endpoint)`）
 3. 编写测试并运行
+
+### 添加计费接口
+
+**需修改的文件**:
+1. `backend/app/core/billing.py` - `PRICE_TABLE` 加入 `endpoint -> 价格`
+2. 路由中调用 `price = billing.get_price(endpoint)` 并传入 `check_quota` / `consume_quota`
+3. `frontend/src/api/billing.js` - 同步价格表展示
+4. `backend/tests/test_api.py` - 补充余额扣减/不足 402 用例
 
 ### 添加新的 AI 任务类型
 

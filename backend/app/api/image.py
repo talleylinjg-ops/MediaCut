@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import Response
 
-from app.core import quota
+from app.core import billing, quota
 from app.core.security import authenticate_developer
 from app.database import get_db
 from app.models import Developer
@@ -20,7 +20,8 @@ def image_edit(
     developer: Developer = Depends(authenticate_developer),
     db: Session = Depends(get_db),
 ):
-    quota.check_quota(db, developer)
+    price = billing.get_price("/api/v1/image/edit")
+    quota.check_quota(db, developer, price)
     image_service.validate_image(file.content_type or "", file.size or 0)
     data = file.file.read()
     try:
@@ -31,7 +32,7 @@ def image_edit(
         raise HTTPException(status_code=400, detail="invalid params json")
 
     result, output_format = image_service.process_image(data, parsed)
-    quota.consume_quota(db, developer)
+    quota.consume_quota(db, developer, price)
 
     content_type = f"image/{output_format}"
     if output_format == "jpeg":

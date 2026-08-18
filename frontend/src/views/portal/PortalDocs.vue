@@ -1,0 +1,73 @@
+<template>
+  <div>
+    <PortalNav />
+    <div style="padding: 40px; max-width: 900px; margin: 0 auto">
+      <h2>接入文档</h2>
+
+      <h3>1. 认证</h3>
+      <p>所有业务接口使用 <code>Authorization: Bearer &lt;API_KEY&gt;</code> 请求头认证。</p>
+
+      <h3>2. 图片剪辑</h3>
+      <pre>{{ imageExample }}</pre>
+
+      <h3>3. 音频剪辑</h3>
+      <pre>{{ audioExample }}</pre>
+
+      <h3>4. AI 异步任务</h3>
+      <pre>{{ aiExample }}</pre>
+
+      <h3>5. 错误码</h3>
+      <el-table :data="errors" style="margin-top: 8px">
+        <el-table-column prop="code" label="状态码" width="90" />
+        <el-table-column prop="meaning" label="含义" />
+      </el-table>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import PortalNav from '../../components/PortalNav.vue'
+
+const imageExample = `curl -X POST https://API_HOST/api/v1/image/edit \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "file=@photo.png" \\
+  -F 'params={"resize": {"width": 800}, "filter": "gray", "output_format": "jpeg"}'`
+
+const audioExample = `curl -X POST https://API_HOST/api/v1/audio/edit \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "file=@speech.wav" \\
+  -F 'params={"crop": {"start": 1.5, "end": 10.0}, "output_format": "mp3"}'`
+
+const aiExample = `# 提交任务
+curl -X POST https://API_HOST/api/v1/ai/matting \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "file=@portrait.png"
+
+# 响应: {"task_id": "...", "status": "pending", "status_url": "/api/v1/tasks/{task_id}"}
+
+# 轮询状态
+curl https://API_HOST/api/v1/tasks/{task_id} -H "Authorization: Bearer YOUR_API_KEY"`
+
+const errors = [
+  { code: 401, meaning: 'API Key 无效' },
+  { code: 402, meaning: '余额不足，请充值' },
+  { code: 429, meaning: '当日配额已用完' },
+  { code: 503, meaning: 'AI 模型未配置，请联系管理员' }
+]
+</script>
+
+<style scoped>
+pre {
+  background: #f6f8fa;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+code {
+  background: #f6f8fa;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+</style>

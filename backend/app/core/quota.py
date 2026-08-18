@@ -4,9 +4,10 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app import models
+from app.core import billing
 
 
-def check_quota(db: Session, developer: models.Developer) -> None:
+def check_quota(db: Session, developer: models.Developer, price: int = 0) -> None:
     if developer.quota_date != date.today():
         developer.quota_date = date.today()
         developer.quota_used = 0
@@ -14,11 +15,15 @@ def check_quota(db: Session, developer: models.Developer) -> None:
         db.refresh(developer)
     if developer.quota_used >= developer.quota_limit:
         raise HTTPException(status_code=429, detail="quota exceeded")
+    if developer.billing_type == billing.BILLING_EXTERNAL and price > 0 and developer.balance < price:
+        raise HTTPException(status_code=402, detail="insufficient balance")
 
 
-def consume_quota(db: Session, developer: models.Developer) -> None:
-    check_quota(db, developer)
+def consume_quota(db: Session, developer: models.Developer, price: int = 0) -> None:
+    check_quota(db, developer, price)
     developer.quota_used += 1
+    if developer.billing_type == billing.BILLING_EXTERNAL and price > 0:
+        developer.balance -= price
     db.commit()
     db.refresh(developer)
 
