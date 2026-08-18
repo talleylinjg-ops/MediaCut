@@ -157,8 +157,7 @@
 **/.flutter-plugins-dependencies
 
 # Compressed files
-*.zip
-*.rar
+*.zip*.rar
 *.7z
 *.tar
 *.tar.gz
@@ -174,3 +173,9 @@
 *.lz
 *.lzma
 *.iso
+
+# Media edit platform
+backend/media.db*
+backend/storage/
+frontend/dist/
+frontend/node_modules/

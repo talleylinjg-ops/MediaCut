@@ -1,0 +1,47 @@
+import os
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+
+from app.config import RESULT_DIR
+from app.core.security import authenticate_developer
+from app.database import get_db
+from app.models import Developer, Task
+
+router = APIRouter(prefix="/api/v1/result", tags=["结果下载"])
+
+MIME_MAP = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".wav": "audio/wav",
+    ".mp3": "audio/mpeg",
+    ".txt": "text/plain",
+}
+
+
+@router.get("/{task_id}/{filename}")
+def download_result(
+    task_id: str,
+    filename: str,
+    developer: Developer = Depends(authenticate_developer),
+    db: Session = Depends(get_db),
+):
+    task = db.query(Task).filter(
+        Task.task_id == task_id,
+        Task.developer_id == developer.id,
+    ).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+
+    if os.path.basename(filename) != filename:
+        raise HTTPException(status_code=400, detail="invalid filename")
+
+    path = os.path.join(RESULT_DIR, task_id, filename)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="result file not found")
+
+    ext = os.path.splitext(filename)[1].lower()
+    return FileResponse(path, media_type=MIME_MAP.get(ext, "application/octet-stream"))

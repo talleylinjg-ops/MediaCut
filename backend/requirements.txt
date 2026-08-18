@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+pillow
+opencv-python-headless
+modelscope
+python-multipart
+pyjwt
+pytest
+httpx
