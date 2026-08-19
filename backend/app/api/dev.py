@@ -39,6 +39,7 @@ def register(payload: DeveloperRegister, db: Session = Depends(get_db)):
         password_hash=hash_password(payload.password),
         api_key_hash=hash_api_key(api_key),
         billing_type=billing.BILLING_EXTERNAL,
+        balance=billing.SIGNUP_BONUS,
     )
     db.add(developer)
     db.commit()

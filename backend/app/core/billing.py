@@ -10,6 +10,8 @@ PRICE_TABLE = {
 BILLING_INTERNAL = "internal"
 BILLING_EXTERNAL = "external"
 
+SIGNUP_BONUS = 100
+
 
 def get_price(endpoint: str) -> int:
     return PRICE_TABLE.get(endpoint, 0)

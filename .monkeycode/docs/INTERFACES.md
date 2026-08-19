@@ -64,6 +64,7 @@ Authorization: Bearer <JWT_TOKEN>
   - AI 增强 `/api/v1/ai/enhance`：15 点/次
   - AI 语音识别 `/api/v1/ai/asr`：10 点/次
   - AI 语音合成 `/api/v1/ai/tts`：5 点/次
+- 新注册 `external` 账户自动赠送 100 点（`billing.SIGNUP_BONUS`），可直接调用
 - 充值由管理员在管理后台完成（`PUT /api/v1/admin/developers/{id}` 传 `recharge`）
 
 ## 开发者接口

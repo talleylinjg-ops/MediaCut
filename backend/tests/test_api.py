@@ -160,6 +160,15 @@ def test_quota_exceeded_returns_429():
 def test_external_charged_and_insufficient_balance():
     key, _ = register()
     price = billing.get_price("/api/v1/image/edit")
+
+    db = SessionLocal()
+    try:
+        dev = db.query(models.Developer).filter(models.Developer.api_key_hash == hash_api_key(key)).first()
+        assert dev.balance == billing.SIGNUP_BONUS
+        dev.balance = 0
+        db.commit()
+    finally:
+        db.close()
     resp = client.post(
         "/api/v1/image/edit",
         headers={"Authorization": f"Bearer {key}"},
@@ -225,7 +234,7 @@ def test_client_login_and_me():
     assert resp.status_code == 200
     me = resp.json()
     assert me["billing_type"] == "external"
-    assert me["balance"] == 0
+    assert me["balance"] == billing.SIGNUP_BONUS
 
     resp = client.post("/api/v1/dev/client/login", json={"email": email, "password": "wrong"})
     assert resp.status_code == 401
@@ -274,7 +283,7 @@ def test_admin_recharge_and_stats():
         json={"recharge": 500},
     )
     assert resp.status_code == 200
-    assert resp.json()["balance"] == 500
+    assert resp.json()["balance"] == billing.SIGNUP_BONUS + 500
 
     resp = client.get("/api/v1/admin/stats", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200

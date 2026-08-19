@@ -96,7 +96,7 @@ curl -H "Authorization: Bearer <你的API_KEY>" \
 - 开发者分为两种计费类型：
   - `internal`（内部免费）：按每日配额限流，不扣费
   - `external`（对外计费）：按接口价格从预充值 `balance`（点数）扣减
-- 余额不足时接口返回 `402 Payment Required`，当日配额用完返回 `429`
+- 新注册 `external` 账户自动赠送 100 点，可直接调用；余额不足时接口返回 `402 Payment Required`，当日配额用完返回 `429`
 - 充值通过管理后台「开发者管理 → 充值」或 `PUT /admin/developers/{id}` 接口完成
 
 ## 测试
