@@ -20,4 +20,21 @@ http.interceptors.request.use((config) => {
   return config
 })
 
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status
+    const url = error.config?.url || ''
+    if (status === 401 && url.startsWith('/admin') && url !== '/admin/login') {
+      localStorage.removeItem('admin_token')
+      window.location.href = '/login'
+    }
+    if (status === 401 && url.startsWith('/dev/client') && url !== '/dev/client/login') {
+      localStorage.removeItem('client_token')
+      window.location.href = '/client/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
 export default http
