@@ -4,7 +4,6 @@
       <el-menu :default-active="active" router>
         <el-menu-item index="/developers">开发者管理</el-menu-item>
         <el-menu-item index="/stats">调用统计</el-menu-item>
-        <el-menu-item index="/api-keys">API 申请演示</el-menu-item>
       </el-menu>
     </el-aside>
     <el-main>
