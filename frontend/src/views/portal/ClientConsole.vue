@@ -25,6 +25,19 @@
       </el-card>
 
       <el-card style="margin-top: 20px">
+        <h3>自助充值</h3>
+        <p>当前余额：<b>{{ me.balance }}</b> 点。充值后立即到账，可用于抵扣调用费用。</p>
+        <el-form inline style="margin-top: 12px" @submit.prevent>
+          <el-form-item label="金额 (点)">
+            <el-input-number v-model="rechargeAmount" :min="1" :max="1000000" :step="100" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="recharging" @click="recharge">充值</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <el-card style="margin-top: 20px">
         <h3>API Key</h3>
         <p v-if="newKey">
           <el-alert type="success" :closable="false" title="新 Key 已生成，请立即保存（仅此一次展示）：" />
@@ -65,6 +78,8 @@ const me = ref(null)
 const logs = ref([])
 const loading = ref(false)
 const newKey = ref('')
+const rechargeAmount = ref(100)
+const recharging = ref(false)
 
 function formatTime(t) {
   return t ? t.replace('T', ' ').slice(0, 19) : ''
@@ -83,6 +98,19 @@ async function load() {
     ElMessage.error(e.response?.data?.detail || '加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function recharge() {
+  recharging.value = true
+  try {
+    const { data } = await http.post('/dev/client/recharge', { amount: rechargeAmount.value })
+    me.value.balance = data.balance
+    ElMessage.success(`充值成功，当前余额 ${data.balance} 点`)
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '充值失败')
+  } finally {
+    recharging.value = false
   }
 }
 

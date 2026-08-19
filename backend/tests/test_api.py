@@ -240,6 +240,30 @@ def test_client_login_and_me():
     assert resp.status_code == 401
 
 
+def test_client_self_recharge():
+    key, email = register()
+    resp = client.post("/api/v1/dev/client/login", json={"email": email, "password": "secret123"})
+    token = resp.json()["token"]
+
+    resp = client.post(
+        "/api/v1/dev/client/recharge",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"amount": 300},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["balance"] == billing.SIGNUP_BONUS + 300
+
+    resp = client.post(
+        "/api/v1/dev/client/recharge",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"amount": 0},
+    )
+    assert resp.status_code == 400
+
+    resp = client.post("/api/v1/dev/client/recharge", json={"amount": 100})
+    assert resp.status_code == 401
+
+
 def test_client_reset_key():
     key, email = register()
     resp = client.post("/api/v1/dev/client/login", json={"email": email, "password": "secret123"})

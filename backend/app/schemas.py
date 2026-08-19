@@ -74,6 +74,14 @@ class ClientToken(BaseModel):
     token: str
 
 
+class RechargeRequest(BaseModel):
+    amount: int
+
+
+class RechargeResponse(BaseModel):
+    balance: int
+
+
 class ClientOut(BaseModel):
     id: int
     name: str

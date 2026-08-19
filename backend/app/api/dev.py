@@ -19,6 +19,8 @@ from app.schemas import (
     ClientToken,
     DeveloperRegister,
     LogOut,
+    RechargeRequest,
+    RechargeResponse,
 )
 
 router = APIRouter(prefix="/api/v1/dev", tags=["开发者"])
@@ -71,6 +73,20 @@ def client_logs(developer: Developer = Depends(authenticate_client), db: Session
         .limit(50)
         .all()
     )
+
+
+@router.post("/client/recharge", response_model=RechargeResponse)
+def client_recharge(
+    payload: RechargeRequest,
+    developer: Developer = Depends(authenticate_client),
+    db: Session = Depends(get_db),
+):
+    if payload.amount < 1 or payload.amount > 1000000:
+        raise HTTPException(status_code=400, detail="invalid amount")
+    developer.balance += payload.amount
+    db.commit()
+    db.refresh(developer)
+    return RechargeResponse(balance=developer.balance)
 
 
 @router.post("/client/reset-key", response_model=ApiKeyResponse)
