@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
@@ -5,8 +7,8 @@ from sqlalchemy.orm import Session
 from app.config import ADMIN_PASSWORD, ADMIN_USERNAME
 from app.core.security import create_admin_token, require_admin
 from app.database import get_db
-from app.models import ApiCallLog, Developer
-from app.schemas import AdminLogin, AdminToken, DeveloperOut, DeveloperUpdate, StatOut
+from app.models import ApiCallLog, Developer, Task
+from app.schemas import AdminLogin, AdminToken, DashboardOut, DeveloperOut, DeveloperUpdate, StatOut
 
 router = APIRouter(prefix="/api/v1/admin", tags=["管理后台"])
 
@@ -47,6 +49,32 @@ def update_developer(developer_id: int, payload: DeveloperUpdate, db: Session = 
     db.commit()
     db.refresh(developer)
     return developer
+
+
+@router.get("/dashboard", response_model=DashboardOut, dependencies=[Depends(require_admin)])
+def get_dashboard(db: Session = Depends(get_db)):
+    today_start = datetime.combine(datetime.utcnow().date(), time.min)
+    total_developers = db.query(Developer).count()
+    active_developers = db.query(Developer).filter(Developer.status == "active").count()
+    external_developers = db.query(Developer).filter(Developer.billing_type == "external").count()
+    today_calls = db.query(ApiCallLog).filter(ApiCallLog.created_at >= today_start).count()
+    total_revenue = (
+        db.query(func.sum(ApiCallLog.cost))
+        .filter(ApiCallLog.status_code < 400)
+        .scalar()
+        or 0
+    )
+    pending_tasks = db.query(Task).filter(Task.status.in_(["pending", "running"])).count()
+    total_balance = db.query(func.sum(Developer.balance)).scalar() or 0
+    return DashboardOut(
+        total_developers=total_developers,
+        active_developers=active_developers,
+        external_developers=external_developers,
+        today_calls=today_calls,
+        total_revenue=total_revenue,
+        pending_tasks=pending_tasks,
+        total_balance=total_balance,
+    )
 
 
 @router.get("/stats", response_model=list[StatOut], dependencies=[Depends(require_admin)])

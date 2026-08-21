@@ -32,7 +32,7 @@ async function login() {
       password: password.value
     })
     localStorage.setItem('admin_token', data.token)
-    router.push('/developers')
+    router.push('/admin')
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '登录失败')
   }

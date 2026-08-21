@@ -314,6 +314,18 @@ def test_admin_recharge_and_stats():
     assert isinstance(resp.json(), list)
 
 
+def test_admin_dashboard():
+    token = client.post("/api/v1/admin/login", json={"username": "admin", "password": "admin123"}).json()["token"]
+    resp = client.get("/api/v1/admin/dashboard", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total_developers"] >= 1
+    assert body["total_revenue"] >= 0
+
+    resp = client.get("/api/v1/admin/dashboard")
+    assert resp.status_code == 401
+
+
 def test_admin_requires_auth():
     resp = client.get("/api/v1/admin/developers")
     assert resp.status_code == 401

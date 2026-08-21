@@ -8,7 +8,6 @@
     <el-menu-item index="/register">申请 API Key</el-menu-item>
     <el-menu-item v-if="clientLoggedIn" index="/client/console">客户控制台</el-menu-item>
     <el-menu-item v-else index="/client/login">客户登录</el-menu-item>
-    <el-menu-item index="/login">管理后台</el-menu-item>
   </el-menu>
 </template>
 

@@ -110,3 +110,13 @@ class StatOut(BaseModel):
     success: int
     failed: int
     revenue: int
+
+
+class DashboardOut(BaseModel):
+    total_developers: int
+    active_developers: int
+    external_developers: int
+    today_calls: int
+    total_revenue: int
+    pending_tasks: int
+    total_balance: int

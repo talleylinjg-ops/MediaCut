@@ -2,6 +2,7 @@
   <el-container>
     <el-aside width="200px">
       <el-menu :default-active="active" router>
+        <el-menu-item index="/admin">首页</el-menu-item>
         <el-menu-item index="/developers">开发者管理</el-menu-item>
         <el-menu-item index="/stats">调用统计</el-menu-item>
       </el-menu>
