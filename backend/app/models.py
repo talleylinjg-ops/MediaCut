@@ -51,3 +51,10 @@ class ApiCallLog(Base):
     status_code = Column(Integer, nullable=False)
     cost = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class AppConfig(Base):
+    __tablename__ = "app_config"
+
+    key = Column(String(128), primary_key=True)
+    value = Column(Text, nullable=False)

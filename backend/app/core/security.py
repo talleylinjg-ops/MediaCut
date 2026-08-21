@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.config import ADMIN_PASSWORD, ADMIN_USERNAME, JWT_EXPIRE_HOURS, JWT_SECRET
+from app.core import settings
 from app.database import get_db
 
 
@@ -60,6 +61,13 @@ def verify_admin_token(token: str) -> bool:
         return payload.get("role") == "admin" and payload.get("sub") == ADMIN_USERNAME
     except HTTPException:
         return False
+
+
+def admin_password_matches(password: str) -> bool:
+    stored_hash = settings.get_admin_password_hash()
+    if stored_hash:
+        return verify_password(password, stored_hash)
+    return secrets.compare_digest(password, ADMIN_PASSWORD)
 
 
 def authenticate_client(

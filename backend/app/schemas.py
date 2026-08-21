@@ -65,6 +65,21 @@ class AdminToken(BaseModel):
     token: str
 
 
+class AdminPasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ConfigOut(BaseModel):
+    admin_username: str
+    modelscope_configured: bool
+    models: dict
+
+
+class ConfigUpdate(BaseModel):
+    modelscope_api_token: Optional[str] = None
+
+
 class ClientLogin(BaseModel):
     email: str
     password: str

@@ -326,6 +326,55 @@ def test_admin_dashboard():
     assert resp.status_code == 401
 
 
+def test_admin_change_password_and_restore():
+    token = client.post("/api/v1/admin/login", json={"username": "admin", "password": "admin123"}).json()["token"]
+    resp = client.put(
+        "/api/v1/admin/password",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"current_password": "admin123", "new_password": "newpass456"},
+    )
+    assert resp.status_code == 200
+
+    resp = client.post("/api/v1/admin/login", json={"username": "admin", "password": "admin123"})
+    assert resp.status_code == 401
+    resp = client.post("/api/v1/admin/login", json={"username": "admin", "password": "newpass456"})
+    assert resp.status_code == 200
+
+    # 恢复默认密码，避免影响其他用例
+    token2 = resp.json()["token"]
+    resp = client.put(
+        "/api/v1/admin/password",
+        headers={"Authorization": f"Bearer {token2}"},
+        json={"current_password": "newpass456", "new_password": "admin123"},
+    )
+    assert resp.status_code == 200
+
+
+def test_admin_modelscope_config():
+    token = client.post("/api/v1/admin/login", json={"username": "admin", "password": "admin123"}).json()["token"]
+    resp = client.get("/api/v1/admin/config", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert "modelscope_configured" in resp.json()
+
+    resp = client.put(
+        "/api/v1/admin/config",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"modelscope_api_token": "sk-test-token-123"},
+    )
+    assert resp.status_code == 200
+    resp = client.get("/api/v1/admin/config", headers={"Authorization": f"Bearer {token}"})
+    assert resp.json()["modelscope_configured"] is True
+
+    resp = client.put(
+        "/api/v1/admin/config",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"modelscope_api_token": ""},
+    )
+    assert resp.status_code == 200
+    resp = client.get("/api/v1/admin/config", headers={"Authorization": f"Bearer {token}"})
+    assert resp.json()["modelscope_configured"] is False
+
+
 def test_admin_requires_auth():
     resp = client.get("/api/v1/admin/developers")
     assert resp.status_code == 401

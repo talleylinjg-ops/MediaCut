@@ -4,7 +4,8 @@ import uuid
 
 from fastapi import HTTPException
 
-from app.config import MODELSCOPE_API_TOKEN, MODELSCOPE_MODELS
+from app.config import MODELSCOPE_MODELS
+from app.core.settings import get_modelscope_token
 
 _pipelines = {}
 
@@ -12,11 +13,13 @@ TASK_TYPES = {"matting", "enhance", "asr", "tts"}
 
 
 def _get_pipeline(task_type: str):
-    if not MODELSCOPE_API_TOKEN:
+    token = get_modelscope_token()
+    if not token:
         raise HTTPException(
             status_code=503,
             detail="AI service unavailable: MODELSCOPE_API_TOKEN not configured",
         )
+    os.environ["MODELSCOPE_API_TOKEN"] = token
     if task_type not in _pipelines:
         from modelscope import pipeline
 

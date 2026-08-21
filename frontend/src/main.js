@@ -5,6 +5,7 @@ import 'element-plus/dist/index.css'
 import App from './App.vue'
 import Login from './views/Login.vue'
 import AdminHome from './views/AdminHome.vue'
+import AdminProfile from './views/AdminProfile.vue'
 import Developers from './views/Developers.vue'
 import Stats from './views/Stats.vue'
 import PortalHome from './views/portal/PortalHome.vue'
@@ -25,6 +26,7 @@ const routes = [
   { path: '/client/console', component: ClientConsole, meta: { requiresClient: true } },
   { path: '/login', component: Login },
   { path: '/admin', component: AdminHome, meta: { requiresAuth: true } },
+  { path: '/account', component: AdminProfile, meta: { requiresAuth: true } },
   { path: '/developers', component: Developers, meta: { requiresAuth: true } },
   { path: '/stats', component: Stats, meta: { requiresAuth: true } },
   { path: '/api-keys', redirect: '/register' }

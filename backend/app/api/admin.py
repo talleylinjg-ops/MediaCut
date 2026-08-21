@@ -4,20 +4,66 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from app.config import ADMIN_PASSWORD, ADMIN_USERNAME
-from app.core.security import create_admin_token, require_admin
+from app.config import ADMIN_USERNAME, MODELSCOPE_MODELS
+from app.core import settings
+from app.core.security import (
+    admin_password_matches,
+    create_admin_token,
+    hash_password,
+    require_admin,
+)
 from app.database import get_db
 from app.models import ApiCallLog, Developer, Task
-from app.schemas import AdminLogin, AdminToken, DashboardOut, DeveloperOut, DeveloperUpdate, StatOut
+from app.schemas import (
+    AdminLogin,
+    AdminPasswordChange,
+    AdminToken,
+    ConfigOut,
+    ConfigUpdate,
+    DashboardOut,
+    DeveloperOut,
+    DeveloperUpdate,
+    StatOut,
+)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["管理后台"])
 
 
 @router.post("/login", response_model=AdminToken)
 def login(payload: AdminLogin):
-    if payload.username != ADMIN_USERNAME or payload.password != ADMIN_PASSWORD:
+    if payload.username != ADMIN_USERNAME or not admin_password_matches(payload.password):
         raise HTTPException(status_code=401, detail="invalid credentials")
     return AdminToken(token=create_admin_token())
+
+
+@router.put("/password", dependencies=[Depends(require_admin)])
+def change_password(payload: AdminPasswordChange):
+    if not admin_password_matches(payload.current_password):
+        raise HTTPException(status_code=401, detail="current password incorrect")
+    if not payload.new_password or len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="new password must be at least 6 characters")
+    settings.set_admin_password_hash(hash_password(payload.new_password))
+    return {"ok": True}
+
+
+@router.get("/config", response_model=ConfigOut, dependencies=[Depends(require_admin)])
+def get_config():
+    return ConfigOut(
+        admin_username=ADMIN_USERNAME,
+        modelscope_configured=bool(settings.get_modelscope_token()),
+        models=MODELSCOPE_MODELS,
+    )
+
+
+@router.put("/config", dependencies=[Depends(require_admin)])
+def update_config(payload: ConfigUpdate):
+    if payload.modelscope_api_token is not None:
+        token = payload.modelscope_api_token.strip()
+        if token:
+            settings.set_modelscope_token(token)
+        else:
+            settings.set_modelscope_token("")
+    return {"ok": True}
 
 
 @router.get("/developers", response_model=list[DeveloperOut], dependencies=[Depends(require_admin)])

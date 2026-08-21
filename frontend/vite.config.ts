@@ -7,6 +7,9 @@ export default defineConfig({
     host: true,
     port: 5173,
     allowedHosts: ['.monkeycode-ai.online'],
+    headers: {
+      'Cache-Control': 'no-store'
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

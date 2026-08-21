@@ -13,7 +13,8 @@
       </el-table>
       <el-card style="margin-top: 24px">
         <h3>充值方式</h3>
-        <p>联系管理员在管理后台为客户账户充值点数，或由内部合作方免费提供配额。</p>
+        <p>登录客户控制台，点击「自助充值」输入点数即可立即到账，无需人工介入。</p>
+        <el-button type="primary" @click="$router.push('/client/console')">去充值</el-button>
       </el-card>
     </div>
   </div>

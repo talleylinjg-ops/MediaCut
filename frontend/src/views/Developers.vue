@@ -5,6 +5,7 @@
         <el-menu-item index="/admin">首页</el-menu-item>
         <el-menu-item index="/developers">开发者管理</el-menu-item>
         <el-menu-item index="/stats">调用统计</el-menu-item>
+        <el-menu-item index="/account">账号中心</el-menu-item>
       </el-menu>
     </el-aside>
     <el-main>
