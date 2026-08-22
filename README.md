@@ -33,10 +33,11 @@ cp .env.example .env   # 填入 MODELSCOPE_API_TOKEN
 bash start.sh
 ```
 
-启动后：
-- 客户门户：http://localhost:5173 （首页 / 定价 / 申请 / 接入文档 / 客户控制台）
-- 管理后台：http://localhost:5173/developers （默认账号 admin / admin123，生产请修改）
-- Swagger 文档：http://localhost:8000/docs
+启动后（单端口 8000，前端由后端托管）：
+- 客户门户：http://localhost:8000 （首页 / 定价 / 申请 / 接入文档 / 客户控制台）
+- 管理后台：http://localhost:8000/login （默认账号 admin / admin123，登录后进入首页 /admin）
+- 账号中心：http://localhost:8000/account （修改管理员密码、配置 ModelScope Token）
+- Swagger 文档：http://localhost:8000/docs （前端入口 http://localhost:8000/swagger）
 - 健康检查：http://localhost:8000/health
 
 ## 开发者对接示例

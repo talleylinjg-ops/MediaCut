@@ -2,9 +2,10 @@ import os
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import models
@@ -15,7 +16,11 @@ from app.database import Base, SessionLocal, engine
 
 API_KEY_PATHS = ("/api/v1/image", "/api/v1/audio", "/api/v1/ai", "/api/v1/tasks", "/api/v1/result")
 
-STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+FRONTEND_DIST = os.path.normpath(os.path.join(BASE_DIR, "..", "frontend", "dist"))
+
+SPA_EXCLUDED_PREFIXES = ("/api/", "/docs", "/redoc", "/openapi.json", "/static", "/health")
 
 
 @asynccontextmanager
@@ -35,12 +40,25 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+if os.path.isdir(FRONTEND_DIST):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(404)
+async def spa_fallback(request: Request, exc: HTTPException):
+    if request.url.path.startswith(SPA_EXCLUDED_PREFIXES):
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    index_file = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 
 @app.get("/docs", include_in_schema=False)
