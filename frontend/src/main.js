@@ -14,6 +14,7 @@ import PortalRegister from './views/portal/PortalRegister.vue'
 import PortalDocs from './views/portal/PortalDocs.vue'
 import ClientLogin from './views/portal/ClientLogin.vue'
 import ClientConsole from './views/portal/ClientConsole.vue'
+import ApiPlayground from './views/portal/ApiPlayground.vue'
 import SwaggerDoc from './views/SwaggerDoc.vue'
 
 const routes = [
@@ -22,6 +23,7 @@ const routes = [
   { path: '/register', component: PortalRegister },
   { path: '/docs', component: PortalDocs },
   { path: '/swagger', component: SwaggerDoc },
+  { path: '/playground', component: ApiPlayground },
   { path: '/client/login', component: ClientLogin },
   { path: '/client/console', component: ClientConsole, meta: { requiresClient: true } },
   { path: '/login', component: Login },

@@ -12,6 +12,7 @@
             <h3>图片剪辑</h3>
             <p>裁切、缩放、滤镜、水印、格式转换</p>
             <p><el-tag type="success">1 点 / 次</el-tag></p>
+            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=image')">去试用</el-button>
           </el-card>
         </el-col>
         <el-col :span="8">
@@ -19,6 +20,7 @@
             <h3>音频剪辑</h3>
             <p>裁剪、拼接、音量调整、格式转换</p>
             <p><el-tag type="warning">2 点 / 次</el-tag></p>
+            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=audio')">去试用</el-button>
           </el-card>
         </el-col>
         <el-col :span="8">
@@ -26,6 +28,7 @@
             <h3>AI 处理</h3>
             <p>人像抠图、画质增强、语音识别、语音合成</p>
             <p><el-tag type="danger">5-15 点 / 次</el-tag></p>
+            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=ai')">去试用</el-button>
           </el-card>
         </el-col>
       </el-row>

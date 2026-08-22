@@ -6,6 +6,9 @@ const http = axios.create({
 })
 
 http.interceptors.request.use((config) => {
+  if (config.headers.Authorization) {
+    return config
+  }
   if (config.url.startsWith('/dev/client')) {
     const token = localStorage.getItem('client_token')
     if (token) {

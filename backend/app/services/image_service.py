@@ -31,7 +31,15 @@ def apply_crop(img: Image.Image, box) -> Image.Image:
     return img.crop((left, top, right, bottom))
 
 
-def apply_resize(img: Image.Image, width: int, height: int) -> Image.Image:
+def apply_resize(img: Image.Image, width, height) -> Image.Image:
+    width = int(width or 0)
+    height = int(height or 0)
+    if width <= 0 and height <= 0:
+        raise HTTPException(status_code=400, detail="resize requires width or height")
+    if width <= 0:
+        width = int(img.width * height / img.height)
+    if height <= 0:
+        height = int(img.height * width / img.width)
     if width <= 0 or height <= 0:
         raise HTTPException(status_code=400, detail="invalid resize size")
     return img.resize((int(width), int(height)), Image.LANCZOS)
@@ -83,7 +91,7 @@ def process_image(data: bytes, params: dict) -> tuple[bytes, str]:
     if "crop" in params:
         img = apply_crop(img, params["crop"])
     if "resize" in params:
-        img = apply_resize(img, params["resize"]["width"], params["resize"]["height"])
+        img = apply_resize(img, params["resize"].get("width"), params["resize"].get("height"))
     if "filter" in params:
         img = apply_filter(img, params["filter"])
     if "watermark" in params:

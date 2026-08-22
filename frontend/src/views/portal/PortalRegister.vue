@@ -51,6 +51,7 @@ async function submit() {
   try {
     const { data } = await http.post('/dev/register', form)
     apiKey.value = data.api_key
+    localStorage.setItem('api_key', data.api_key)
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '注册失败')
   } finally {
