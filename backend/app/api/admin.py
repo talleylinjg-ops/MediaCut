@@ -9,6 +9,8 @@ from app.core import settings
 from app.core.security import (
     admin_password_matches,
     create_admin_token,
+    generate_api_key,
+    hash_api_key,
     hash_password,
     require_admin,
 )
@@ -95,6 +97,20 @@ def update_developer(developer_id: int, payload: DeveloperUpdate, db: Session = 
     db.commit()
     db.refresh(developer)
     return developer
+
+
+@router.post("/developers/{developer_id}/reset-key", response_model=DeveloperOut, dependencies=[Depends(require_admin)])
+def admin_reset_key(developer_id: int, db: Session = Depends(get_db)):
+    developer = db.get(Developer, developer_id)
+    if developer is None:
+        raise HTTPException(status_code=404, detail="developer not found")
+    api_key = generate_api_key()
+    developer.api_key_hash = hash_api_key(api_key)
+    db.commit()
+    db.refresh(developer)
+    response = DeveloperOut.model_validate(developer)
+    response.api_key_hash = f"KEY:{api_key}"
+    return response
 
 
 @router.get("/dashboard", response_model=DashboardOut, dependencies=[Depends(require_admin)])

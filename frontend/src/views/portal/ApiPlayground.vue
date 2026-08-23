@@ -12,10 +12,28 @@
       />
 
       <el-card>
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap">
           <b>API Key：</b>
-          <el-input v-model="apiKey" placeholder="粘贴你的 API Key" style="max-width: 420px" show-password />
+          <el-input
+            v-model="apiKey"
+            placeholder="粘贴你的 API Key"
+            style="max-width: 420px"
+            show-password
+            @keyup.enter="saveKey"
+          />
+          <el-button type="primary" :loading="savingKey" @click="saveKey">保存</el-button>
+          <span v-if="keyInfo" style="font-size: 12px; color: #67c23a">
+            Key 有效：{{ keyInfo.name }}（余额 {{ keyInfo.balance }} 点）
+          </span>
         </div>
+        <el-alert
+          v-if="keyInfoError"
+          type="error"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px"
+          :title="keyInfoError"
+        />
 
         <el-tabs v-model="tab">
           <el-tab-pane label="图片剪辑" name="image">
@@ -89,6 +107,14 @@
 
           <el-tab-pane label="AI 处理" name="ai">
             <el-form label-width="90px" style="max-width: 520px">
+              <el-form-item label="上传文件">
+                <input
+                  type="file"
+                  :accept="aiType === 'asr' ? 'audio/*' : 'image/*'"
+                  @change="aiFile = $event.target.files[0]"
+                />
+                <span v-if="aiFile" style="margin-left: 12px; font-size: 12px; color: #67c23a">已选择：{{ aiFile.name }}</span>
+              </el-form-item>
               <el-form-item label="任务类型">
                 <el-select v-model="aiType" style="width: 200px">
                   <el-option label="人像抠图 (10点)" value="matting" />
@@ -99,13 +125,6 @@
               </el-form-item>
               <el-form-item v-if="aiType === 'tts'" label="合成文本">
                 <el-input v-model="ttsText" placeholder="输入要合成语音的文本" />
-              </el-form-item>
-              <el-form-item v-else label="上传文件">
-                <input
-                  type="file"
-                  :accept="aiType === 'asr' ? 'audio/*' : 'image/*'"
-                  @change="aiFile = $event.target.files[0]"
-                />
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" :loading="running" @click="runAI">提交 AI 任务</el-button>
@@ -153,9 +172,10 @@
               </div>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center">
-              <el-button size="small" @click="pickVoice">语音输入</el-button>
-              <el-button size="small" @click="pickImage">图片输入</el-button>
-              <el-button size="small" @click="pickMedia">文件输入</el-button>
+              <el-button size="small" type="primary" plain @click="pickVoice">语音输入</el-button>
+              <el-button size="small" type="primary" plain @click="pickImage">图片输入</el-button>
+              <el-button size="small" type="primary" plain @click="pickMedia">文件输入</el-button>
+              <span style="font-size: 12px; color: #909399">上传源文件后，用文字描述如何处理</span>
               <el-input
                 v-model="chatText"
                 placeholder="输入文字指令，例如：给图片加水印"
@@ -184,6 +204,9 @@ import PortalNav from '../../components/PortalNav.vue'
 const apiKey = ref(localStorage.getItem('api_key') || '')
 const tab = ref('image')
 const running = ref(false)
+const savingKey = ref(false)
+const keyInfo = ref(null)
+const keyInfoError = ref('')
 
 const imgFile = ref(null)
 const img = reactive({ filter: '', width: 0, watermark: '', format: '' })
@@ -211,13 +234,53 @@ const mediaInput = ref(null)
 const attach = ref(null)
 const attachMeta = computed(() => (attach.value ? `${attach.value.type} · ${attach.value.file.name}` : ''))
 
-onMounted(() => {
-  apiKey.value = localStorage.getItem('api_key') || ''
+onMounted(async () => {
+  const k = localStorage.getItem('api_key')
+  if (k) {
+    apiKey.value = k
+    await validateKey(true)
+  }
   const q = new URLSearchParams(location.search).get('tab')
   if (['image', 'audio', 'ai', 'chat'].includes(q)) {
     tab.value = q
   }
 })
+
+async function validateKey(silent) {
+  const k = apiKey.value.trim()
+  if (!k) {
+    keyInfo.value = null
+    if (!silent) keyInfoError.value = '请输入 API Key'
+    return
+  }
+  try {
+    const { data } = await http.get('/dev/key/info', { headers: { Authorization: `Bearer ${k}` } })
+    keyInfo.value = data
+    keyInfoError.value = ''
+  } catch (e) {
+    keyInfo.value = null
+    keyInfoError.value = 'API Key 无效：' + (e.response?.data?.detail || '认证失败，请重新申请并保存')
+  }
+}
+
+async function saveKey() {
+  const k = apiKey.value.trim()
+  if (!k) return ElMessage.warning('请输入 API Key')
+  savingKey.value = true
+  try {
+    const { data } = await http.get('/dev/key/info', { headers: { Authorization: `Bearer ${k}` } })
+    localStorage.setItem('api_key', k)
+    keyInfo.value = data
+    keyInfoError.value = ''
+    ElMessage.success(`API Key 已保存并校验通过（${data.name}，余额 ${data.balance} 点）`)
+  } catch (e) {
+    keyInfo.value = null
+    keyInfoError.value = 'API Key 无效：' + (e.response?.data?.detail || '认证失败')
+    ElMessage.error('API Key 无效，请重新申请或检查输入')
+  } finally {
+    savingKey.value = false
+  }
+}
 
 function pickVoice() {
   voiceInput.value.click()

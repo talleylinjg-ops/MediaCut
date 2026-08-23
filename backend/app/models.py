@@ -60,3 +60,16 @@ class AppConfig(Base):
 
     key = Column(String(128), primary_key=True)
     value = Column(Text, nullable=False)
+
+
+class RechargeOrder(Base):
+    __tablename__ = "recharge_order"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_no = Column(String(32), unique=True, index=True, nullable=False)
+    developer_id = Column(Integer, ForeignKey("developer.id"), nullable=False, index=True)
+    amount = Column(Integer, nullable=False)
+    payment_method = Column(String(16), nullable=False)
+    status = Column(String(16), default="pending", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    paid_at = Column(DateTime)

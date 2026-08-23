@@ -99,6 +99,42 @@ class RechargeResponse(BaseModel):
     balance: int
 
 
+class RechargeOrderCreate(BaseModel):
+    amount: int
+    payment_method: str = "alipay"
+
+
+class RechargeOrderOut(BaseModel):
+    order_no: str
+    amount: int
+    payment_method: str
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RechargePayResponse(BaseModel):
+    order_no: str
+    status: str
+    balance: int
+
+
+class ClientPasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class KeyInfoOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    billing_type: str
+    balance: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ClientOut(BaseModel):
     id: int
     name: str

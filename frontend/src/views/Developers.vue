@@ -14,7 +14,16 @@
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="name" label="名称" />
         <el-table-column prop="email" label="邮箱" />
-        <el-table-column prop="api_key_hash" label="API Key (哈希)" width="200" />
+        <el-table-column label="API Key" width="240">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" plain :loading="copyingId === row.id" @click="copyKey(row)">
+              复制 KEY
+            </el-button>
+            <span style="font-size: 12px; color: #909399">
+              {{ row.api_key_hash && row.api_key_hash.startsWith('KEY:') ? '（已重置，待复制）' : '哈希存储' }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'danger'">
@@ -56,6 +65,32 @@ const route = useRoute()
 const active = ref(route.path)
 const developers = ref([])
 const loading = ref(false)
+const copyingId = ref(null)
+
+async function copyKey(row) {
+  copyingId.value = row.id
+  try {
+    const { data } = await http.post(`/admin/developers/${row.id}/reset-key`)
+    const key = data.api_key_hash && data.api_key_hash.startsWith('KEY:') ? data.api_key_hash.slice(4) : ''
+    if (!key) throw new Error('no key')
+    try {
+      await navigator.clipboard.writeText(key)
+    } catch (e) {
+      const ta = document.createElement('textarea')
+      ta.value = key
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    row.api_key_hash = data.api_key_hash
+    ElMessage.success('新 KEY 已生成并复制到剪贴板')
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '获取 KEY 失败')
+  } finally {
+    copyingId.value = null
+  }
+}
 
 async function load() {
   loading.value = true
