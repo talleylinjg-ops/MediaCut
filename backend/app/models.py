@@ -37,6 +37,8 @@ class Task(Base):
     status = Column(String(16), default="pending", nullable=False)
     params = Column(Text, default="{}", nullable=False)
     result_url = Column(String(512))
+    result_text = Column(Text)
+    result_kind = Column(String(16))
     error = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

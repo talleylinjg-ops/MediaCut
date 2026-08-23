@@ -1,0 +1,211 @@
+import json
+import os
+import re
+import uuid
+
+import httpx
+
+from app.core.settings import get_modelscope_token
+from app.services import ai_service, audio_service, image_service
+
+MODELSCOPE_CHAT_URL = "https://api.modelscope.cn/v1/chat/completions"
+CHAT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+
+SYSTEM_PROMPT = (
+    "你是媒体剪辑助手，根据用户请求和输入媒体类型决定执行动作。"
+    "只输出一个 JSON 对象，不要输出任何其他文字。JSON 结构："
+    '{"action":"image_edit|audio_edit|matting|enhance|asr|tts|reply","params":{},"reply":"给用户的简短中文回复"}。'
+    "图片输入时 action 可选 image_edit/matting/enhance，"
+    "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss)、resize(width)、watermark(text,size)、crop、output_format(png/jpeg/webp)。"
+    "音频输入时 action 可选 audio_edit/asr，"
+    "音频编辑 params 支持 crop(start,end)、volume(gain)、output_format(mp3/wav/aac)。"
+    "只有文字时可用 reply 直接回答，或用 tts 将文字转为语音。"
+)
+
+
+def chat_completion(messages: list[dict]) -> str:
+    token = get_modelscope_token()
+    if not token:
+        raise RuntimeError("MODELSCOPE_API_TOKEN not configured")
+    payload = {
+        "model": CHAT_MODEL,
+        "messages": messages,
+        "temperature": 0.2,
+    }
+    resp = httpx.post(
+        MODELSCOPE_CHAT_URL,
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=90,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    try:
+        return data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        raise RuntimeError("unexpected LLM response")
+
+
+def parse_with_llm(text: str, media_kind: str) -> dict | None:
+    user = f"用户请求：{text}\n输入媒体类型：{media_kind or '无'}"
+    try:
+        content = chat_completion([{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}])
+    except Exception:
+        return None
+    match = re.search(r"\{.*\}", content, re.DOTALL)
+    if not match:
+        return None
+    try:
+        intent = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return None
+    action = intent.get("action")
+    if action not in ("image_edit", "audio_edit", "matting", "enhance", "asr", "tts", "reply"):
+        return None
+    params = intent.get("params") or {}
+    return {"action": action, "params": params, "reply": intent.get("reply", "")}
+
+
+def parse_with_rules(text: str, media_kind: str) -> dict:
+    t = text.strip()
+    reply = ""
+    if media_kind == "image":
+        params = {}
+        if re.search(r"灰度|黑白", t):
+            params["filter"] = "gray"
+        elif "模糊" in t:
+            params["filter"] = "blur"
+        elif "锐化" in t:
+            params["filter"] = "sharpen"
+        elif "边缘" in t:
+            params["filter"] = "edge"
+        elif "浮雕" in t:
+            params["filter"] = "emboss"
+        m = re.search(r"(放大|缩小)", t)
+        if m:
+            ratio = 2.0 if m.group(1) == "放大" else 0.5
+            params.setdefault("resize", {"width": 0, "height": 0})
+        if "水印" in t:
+            params.setdefault("watermark", {"text": "MediaCut", "size": 36})
+        for fmt in ("png", "jpeg", "webp"):
+            if f"转{fmt}" in t or fmt in t:
+                params.setdefault("output_format", fmt)
+        if "抠图" in t:
+            return {"action": "matting", "params": {}, "reply": "开始人像抠图"}
+        if "增强" in t:
+            return {"action": "enhance", "params": {}, "reply": "开始画质增强"}
+        if params:
+            return {"action": "image_edit", "params": params, "reply": "已按你的要求处理图片"}
+        return {"action": "reply", "params": {}, "reply": "请告诉我具体要做什么，例如：加水印、转png、灰度、放大、抠图、增强。"}
+    if media_kind == "audio":
+        params = {}
+        m = re.search(r"从\s*([\d.]+)\s*秒到\s*([\d.]+)\s*秒", t) or re.search(r"裁剪?\s*([\d.]+)\s*[-到至~]\s*([\d.]+)", t)
+        if m:
+            params["crop"] = {"start": float(m.group(1)), "end": float(m.group(2))}
+        if "大声" in t:
+            params["volume"] = {"gain": 2.0}
+        elif "小声" in t:
+            params["volume"] = {"gain": 0.5}
+        for fmt in ("mp3", "wav", "aac"):
+            if f"转{fmt}" in t or fmt in t:
+                params.setdefault("output_format", fmt)
+        if "识别" in t or "转文字" in t:
+            return {"action": "asr", "params": {}, "reply": "正在识别语音内容"}
+        if params:
+            return {"action": "audio_edit", "params": params, "reply": "已按你的要求处理音频"}
+        return {"action": "reply", "params": {}, "reply": "请告诉我具体要做什么，例如：从5秒到20秒、大声一点、转mp3、识别语音内容。"}
+    if "转语音" in t or "朗读" in t or "合成" in t or "tts" in t.lower():
+        content = t
+        for kw in ("语音合成", "转语音", "朗读", "合成", "tts"):
+            content = content.replace(kw, "", 1)
+        content = content.strip("：:，,。 ")
+        return {"action": "tts", "params": {"text": content or text}, "reply": "正在合成语音"}
+    return {"action": "reply", "params": {}, "reply": "我可以帮你剪辑图片和音频、识别语音、合成语音。可以发一张图片或一段音频，告诉我你的需求。"}
+
+
+def _resolve_intent(text: str, media_kind: str) -> dict:
+    intent = parse_with_llm(text, media_kind)
+    if intent is not None:
+        return intent
+    return parse_with_rules(text, media_kind)
+
+
+def _save_file(data: bytes, ext: str, task_dir: str) -> str:
+    filename = f"media_{uuid.uuid4().hex}.{ext}"
+    with open(os.path.join(task_dir, filename), "wb") as f:
+        f.write(data)
+    return os.path.join(task_dir, filename)
+
+
+def run_chat(params: dict, task_dir: str) -> dict:
+    voice_path = params.get("voice_path")
+    media_path = params.get("media_path")
+    media_kind = params.get("media_kind")
+    text = (params.get("text") or "").strip()
+
+    voice_text = ""
+    if voice_path and os.path.exists(voice_path):
+        asr_result = ai_service.run_asr(voice_path, task_dir)
+        voice_text = asr_result["text"]
+
+    combined = f"{voice_text} {text}".strip()
+    if not combined:
+        return {"kind": "text", "text": "没有收到有效的文字或语音指令。", "filename": None}
+
+    intent = _resolve_intent(combined, media_kind)
+    action = intent["action"]
+    reply = intent.get("reply") or ""
+    iparams = intent.get("params") or {}
+
+    if action == "reply":
+        return {"kind": "text", "text": reply, "filename": None}
+
+    if action == "tts":
+        tts_text = iparams.get("text") or text or combined
+        filename = ai_service.run_tts(tts_text, task_dir)
+        return {"kind": "audio", "text": reply or "已合成语音", "filename": filename}
+
+    if action == "asr":
+        if not media_path or not os.path.exists(media_path):
+            return {"kind": "text", "text": "需要上传音频文件才能识别语音。", "filename": None}
+        result = ai_service.run_asr(media_path, task_dir)
+        return {"kind": "text", "text": result["text"], "filename": result["filename"]}
+
+    if action in ("matting", "enhance"):
+        if not media_path or not os.path.exists(media_path):
+            return {"kind": "text", "text": "需要上传图片才能处理。", "filename": None}
+        if media_kind != "image":
+            return {"kind": "text", "text": "抠图/增强需要图片输入。", "filename": None}
+        filename = (
+            ai_service.run_matting(media_path, task_dir)
+            if action == "matting"
+            else ai_service.run_enhance(media_path, task_dir)
+        )
+        return {"kind": "image", "text": reply or "处理完成", "filename": filename}
+
+    if action == "image_edit":
+        if not media_path or not os.path.exists(media_path):
+            return {"kind": "text", "text": "需要上传图片才能编辑。", "filename": None}
+        if media_kind != "image":
+            return {"kind": "text", "text": "图片编辑需要图片输入。", "filename": None}
+        with open(media_path, "rb") as f:
+            data = f.read()
+        result, output_format = image_service.process_image(data, iparams)
+        filename = f"chat_{uuid.uuid4().hex}.{output_format}"
+        with open(os.path.join(task_dir, filename), "wb") as f:
+            f.write(result)
+        return {"kind": "image", "text": reply or "图片处理完成", "filename": filename}
+
+    if action == "audio_edit":
+        if not media_path or not os.path.exists(media_path):
+            return {"kind": "text", "text": "需要上传音频才能编辑。", "filename": None}
+        if media_kind != "audio":
+            return {"kind": "text", "text": "音频编辑需要音频输入。", "filename": None}
+        with open(media_path, "rb") as f:
+            data = f.read()
+        ext = params.get("media_ext") or "wav"
+        path, fmt = audio_service.process_audio(data, iparams, ext, task_dir)
+        filename = os.path.basename(path)
+        return {"kind": "audio", "text": reply or "音频处理完成", "filename": filename}
+
+    return {"kind": "text", "text": "暂不支持该操作。", "filename": None}

@@ -43,6 +43,8 @@ class TaskOut(BaseModel):
     task_type: str
     status: str
     result_url: Optional[str] = None
+    result_text: Optional[str] = None
+    result_kind: Optional[str] = None
     error: Optional[str] = None
     created_at: datetime
     updated_at: datetime

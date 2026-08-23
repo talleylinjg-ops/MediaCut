@@ -23,6 +23,53 @@ def _save_upload(file: UploadFile, ext: str) -> str:
     return path
 
 
+@router.post("/chat", response_model=TaskSubmitResponse)
+def submit_chat(
+    text: str = Form(None),
+    voice: UploadFile = File(None),
+    media: UploadFile = File(None),
+    developer: Developer = Depends(authenticate_developer),
+    db: Session = Depends(get_db),
+):
+    has_input = bool((text or "").strip()) or voice is not None or media is not None
+    if not has_input:
+        raise HTTPException(status_code=400, detail="text, voice or media is required")
+
+    price = billing.get_price("/api/v1/ai/chat")
+    quota.check_quota(db, developer, price)
+
+    params: dict = {"text": text or ""}
+
+    if voice is not None:
+        audio_service.validate_audio(voice.content_type or "", voice.size or 0)
+        ext = (voice.filename or "voice.wav").rsplit(".", 1)[-1].lower() or "wav"
+        params["voice_path"] = _save_upload(voice, ext)
+
+    if media is not None:
+        content_type = media.content_type or ""
+        if content_type.startswith("image/"):
+            image_service.validate_image(content_type, media.size or 0)
+            params["media_kind"] = "image"
+            ext = (media.filename or "media.png").rsplit(".", 1)[-1].lower() or "png"
+        elif content_type.startswith("audio/"):
+            audio_service.validate_audio(content_type, media.size or 0)
+            params["media_kind"] = "audio"
+            ext = (media.filename or "media.wav").rsplit(".", 1)[-1].lower() or "wav"
+        else:
+            raise HTTPException(status_code=400, detail="media must be image or audio")
+        params["media_ext"] = ext
+        params["media_path"] = _save_upload(media, ext)
+
+    task_id = task_queue.create_task(developer.id, "chat", params)
+    quota.consume_quota(db, developer, price)
+
+    return TaskSubmitResponse(
+        task_id=task_id,
+        status="pending",
+        status_url=f"/api/v1/tasks/{task_id}",
+    )
+
+
 @router.post("/{task_type}", response_model=TaskSubmitResponse)
 def submit_task(
     task_type: str,

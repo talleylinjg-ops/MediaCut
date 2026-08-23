@@ -129,6 +129,46 @@
               <el-card>识别结果：<b>{{ aiText }}</b></el-card>
             </div>
           </el-tab-pane>
+          <el-tab-pane label="AI 对话剪辑" name="chat">
+            <div
+              ref="chatBox"
+              style="border: 1px solid #e4e7ed; border-radius: 8px; padding: 16px; min-height: 240px; max-height: 420px; overflow: auto"
+            >
+              <div v-if="messages.length === 0" style="color: #909399; font-size: 13px">
+                用一句话描述剪辑需求，支持四种输入：文字（默认）、语音、图片、文件。例如「给图片加水印」「从5秒到20秒」「大声一点」「识别语音内容」。
+              </div>
+              <div v-for="(m, i) in messages" :key="i" style="margin-bottom: 12px">
+                <div
+                  :style="
+                    m.role === 'user'
+                      ? 'background:#ecf5ff; padding:8px 12px; border-radius:8px; display:inline-block; max-width:100%'
+                      : 'background:#f4f4f5; padding:8px 12px; border-radius:8px; display:inline-block; max-width:100%'
+                  "
+                >
+                  <b>{{ m.role === 'user' ? '我' : 'AI' }}：</b>{{ m.text }}
+                </div>
+                <div v-if="m.attachments" style="font-size: 12px; color: #909399; margin-top: 4px">{{ m.attachments }}</div>
+                <img v-if="m.kind === 'image' && m.url" :src="m.url" style="max-width: 260px; margin-top: 8px; border: 1px solid #e4e7ed" />
+                <audio v-if="m.kind === 'audio' && m.url" :src="m.url" controls style="width: 100%; margin-top: 8px" />
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center">
+              <el-button size="small" @click="pickVoice">语音输入</el-button>
+              <el-button size="small" @click="pickImage">图片输入</el-button>
+              <el-button size="small" @click="pickMedia">文件输入</el-button>
+              <el-input
+                v-model="chatText"
+                placeholder="输入文字指令，例如：给图片加水印"
+                style="flex: 1; min-width: 220px"
+                @keyup.enter="sendChat"
+              />
+              <el-button type="primary" :loading="chatLoading" @click="sendChat">发送</el-button>
+            </div>
+            <div v-if="attachMeta" style="margin-top: 8px; font-size: 12px; color: #409eff">已附加：{{ attachMeta }}</div>
+            <input ref="voiceInput" type="file" accept="audio/*" style="display: none" @change="onVoice" />
+            <input ref="imageInput" type="file" accept="image/*" style="display: none" @change="onImage" />
+            <input ref="mediaInput" type="file" accept="audio/*,image/*" style="display: none" @change="onMedia" />
+          </el-tab-pane>
         </el-tabs>
       </el-card>
     </div>
@@ -136,7 +176,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api'
 import PortalNav from '../../components/PortalNav.vue'
@@ -161,13 +201,115 @@ const aiResultUrl = ref('')
 const aiText = ref('')
 const aiError = ref('')
 
+const chatText = ref('')
+const chatLoading = ref(false)
+const chatBox = ref(null)
+const messages = ref([])
+const voiceInput = ref(null)
+const imageInput = ref(null)
+const mediaInput = ref(null)
+const attach = ref(null)
+const attachMeta = computed(() => (attach.value ? `${attach.value.type} · ${attach.value.file.name}` : ''))
+
 onMounted(() => {
   apiKey.value = localStorage.getItem('api_key') || ''
   const q = new URLSearchParams(location.search).get('tab')
-  if (['image', 'audio', 'ai'].includes(q)) {
+  if (['image', 'audio', 'ai', 'chat'].includes(q)) {
     tab.value = q
   }
 })
+
+function pickVoice() {
+  voiceInput.value.click()
+}
+function pickImage() {
+  imageInput.value.click()
+}
+function pickMedia() {
+  mediaInput.value.click()
+}
+function onVoice(e) {
+  const f = e.target.files[0]
+  if (f) attach.value = { type: 'voice', file: f }
+  e.target.value = ''
+}
+function onImage(e) {
+  const f = e.target.files[0]
+  if (f) attach.value = { type: 'media', file: f, kind: 'image' }
+  e.target.value = ''
+}
+function onMedia(e) {
+  const f = e.target.files[0]
+  if (f) attach.value = { type: 'media', file: f, kind: f.type.startsWith('image') ? 'image' : 'audio' }
+  e.target.value = ''
+}
+
+function scrollDown() {
+  nextTick(() => {
+    if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight
+  })
+}
+
+async function sendChat() {
+  if (chatLoading.value) return
+  const text = chatText.value.trim()
+  const at = attach.value
+  if (!text && !at) return ElMessage.warning('请输入指令或附加输入')
+  chatLoading.value = true
+  messages.value.push({ role: 'user', text: text || '（语音/文件输入）', attachments: at ? attachMeta.value : '' })
+  scrollDown()
+  try {
+    const form = new FormData()
+    if (text) form.append('text', text)
+    if (at?.type === 'voice') form.append('voice', at.file)
+    if (at?.type === 'media') form.append('media', at.file)
+    const headers = { Authorization: `Bearer ${apiKey.value}` }
+    const submit = await http.post('/ai/chat', form, { headers })
+    const taskId = submit.data.task_id
+
+    let out = null
+    for (let i = 0; i < 90; i++) {
+      await new Promise((r) => setTimeout(r, 1000))
+      const poll = await http.get(`/tasks/${taskId}`, { headers })
+      if (poll.data.status === 'succeeded') {
+        out = poll.data
+        break
+      }
+      if (poll.data.status === 'failed') {
+        messages.value.push({ role: 'assistant', text: '处理失败：' + (poll.data.error || '未知错误') })
+        chatLoading.value = false
+        attach.value = null
+        chatText.value = ''
+        scrollDown()
+        return
+      }
+    }
+    if (!out) {
+      messages.value.push({ role: 'assistant', text: '处理超时，请稍后在客户控制台查看' })
+      chatLoading.value = false
+      attach.value = null
+      chatText.value = ''
+      scrollDown()
+      return
+    }
+
+    const msg = { role: 'assistant', text: out.result_text || '处理完成' }
+    if (out.result_url) {
+      const name = out.result_url.split('/').pop()
+      const fileResp = await http.get(`/result/${taskId}/${name}`, { headers, responseType: 'blob' })
+      msg.kind = out.result_kind
+      msg.url = URL.createObjectURL(fileResp.data)
+    }
+    messages.value.push(msg)
+  } catch (e) {
+    messages.value.push({ role: 'assistant', text: '提交失败：' + (e.response?.data?.detail || e.message || '未知错误') })
+  } finally {
+    chatLoading.value = false
+    attach.value = null
+    chatText.value = ''
+    scrollDown()
+  }
+}
 
 function buildParams() {
   const params = {}

@@ -5,6 +5,7 @@ PRICE_TABLE = {
     "/api/v1/ai/enhance": 15,
     "/api/v1/ai/asr": 10,
     "/api/v1/ai/tts": 5,
+    "/api/v1/ai/chat": 10,
 }
 
 BILLING_INTERNAL = "internal"

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from app import models
 from app.config import RESULT_DIR, TASK_TTL_HOURS
 from app.database import SessionLocal
-from app.services import ai_service
+from app.services import ai_service, chat_service
 
 _executor = ThreadPoolExecutor(max_workers=2)
 _cleanup_interval = 30 * 60
@@ -46,10 +46,23 @@ def run_task(task_id: int) -> None:
         params = json.loads(task.params)
         task_dir = os.path.join(RESULT_DIR, task.task_id)
         os.makedirs(task_dir, exist_ok=True)
+
+        if task.task_type == "chat":
+            result = chat_service.run_chat(params, task_dir)
+            task.status = "succeeded"
+            task.result_kind = result.get("kind")
+            task.result_text = result.get("text")
+            if result.get("filename"):
+                task.result_url = os.path.join(task.task_id, result["filename"])
+            db.commit()
+            return
+
         result = ai_service.run_ai_task(task.task_type, params, task_dir)
 
         task.status = "succeeded"
         task.result_url = os.path.join(task.task_id, result["filename"])
+        task.result_kind = result.get("kind")
+        task.result_text = result.get("text")
         db.commit()
     except Exception as exc:
         task = db.get(models.Task, task_id)
