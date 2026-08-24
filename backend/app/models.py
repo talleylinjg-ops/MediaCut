@@ -18,6 +18,7 @@ class Developer(Base):
     email = Column(String(256), nullable=False)
     password_hash = Column(String(256), default="", nullable=False)
     api_key_hash = Column(String(256), unique=True, nullable=False)
+    api_key = Column(String(256))
     billing_type = Column(String(16), default="external", nullable=False)
     balance = Column(Integer, default=0, nullable=False)
     status = Column(String(16), default="active", nullable=False)

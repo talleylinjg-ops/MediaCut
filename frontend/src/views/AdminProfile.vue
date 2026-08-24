@@ -220,6 +220,32 @@ async function clearToken() {
 }
 
 async function savePayConfig() {
+  const alipayFields = ['alipay_appid', 'alipay_private_key', 'alipay_public_key']
+  const wechatFields = ['wechat_appid', 'wechat_mchid', 'wechat_apiv3_key', 'wechat_serial_no', 'wechat_private_key']
+  const filled = (fields) => fields.filter((f) => pay[f].trim()).length
+  const complete = (fields) => fields.every((f) => pay[f].trim())
+
+  const alipayFill = filled(alipayFields)
+  const wechatFill = filled(wechatFields)
+  const notifyFilled = Boolean(pay.notify_base.trim())
+
+  if (!alipayFill && !wechatFill && !notifyFilled) {
+    ElMessage.warning('请至少填写支付宝或微信一个渠道的完整配置')
+    return
+  }
+  if (alipayFill && !complete(alipayFields)) {
+    ElMessage.warning('支付宝配置不完整：APPID、应用私钥、支付宝公钥 缺一不可')
+    return
+  }
+  if (wechatFill && !complete(wechatFields)) {
+    ElMessage.warning('微信配置不完整：AppID、商户号、APIv3密钥、证书序列号、商户私钥 缺一不可')
+    return
+  }
+  if (notifyFilled && !/^https?:\/\/.+/.test(pay.notify_base.trim())) {
+    ElMessage.warning('回调基础地址需以 http:// 或 https:// 开头')
+    return
+  }
+
   savingPay.value = true
   const body = {}
   const map = {

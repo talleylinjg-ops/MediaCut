@@ -28,6 +28,7 @@ from app.schemas import (
     RechargeOrderCreate,
     RechargeOrderOut,
 )
+from app.core import settings
 from app.services import payment_service
 
 router = APIRouter(prefix="/api/v1/dev", tags=["开发者"])
@@ -47,6 +48,7 @@ def register(payload: DeveloperRegister, db: Session = Depends(get_db)):
         email=payload.email.strip(),
         password_hash=hash_password(payload.password),
         api_key_hash=hash_api_key(api_key),
+        api_key=api_key,
         billing_type=billing.BILLING_EXTERNAL,
         balance=billing.SIGNUP_BONUS,
     )
@@ -54,6 +56,34 @@ def register(payload: DeveloperRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(developer)
     return ApiKeyResponse(developer_id=developer.id, api_key=api_key)
+
+
+@router.get("/pay/status")
+def pay_status():
+    return {
+        "alipay": bool(settings.get_pay_config("pay_alipay_appid")),
+        "wechat": bool(settings.get_pay_config("pay_wechat_mchid")),
+    }
+
+
+@router.get("/key/info", response_model=KeyInfoOut)
+def key_info(developer: Developer = Depends(authenticate_developer)):
+    return developer
+
+
+@router.post("/client/password")
+def client_change_password(
+    payload: ClientPasswordChange,
+    developer: Developer = Depends(authenticate_client),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(payload.current_password, developer.password_hash):
+        raise HTTPException(status_code=401, detail="current password incorrect")
+    if not payload.new_password or len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="new password must be at least 6 characters")
+    developer.password_hash = hash_password(payload.new_password)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/client/login", response_model=ClientToken)
@@ -69,6 +99,7 @@ def client_login(payload: ClientLogin, db: Session = Depends(get_db)):
                 email="admin",
                 password_hash=hash_password(payload.password),
                 api_key_hash=hash_api_key(api_key),
+                api_key=api_key,
                 billing_type=billing.BILLING_EXTERNAL,
                 balance=billing.SIGNUP_BONUS,
             )
@@ -179,5 +210,6 @@ def list_recharge_orders(
 def client_reset_key(developer: Developer = Depends(authenticate_client), db: Session = Depends(get_db)):
     api_key = generate_api_key()
     developer.api_key_hash = hash_api_key(api_key)
+    developer.api_key = api_key
     db.commit()
     return ApiKeyResponse(developer_id=developer.id, api_key=api_key)

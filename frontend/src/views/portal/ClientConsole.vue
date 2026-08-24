@@ -26,7 +26,15 @@
 
       <el-card style="margin-top: 20px">
         <h3>自助充值</h3>
-        <p>当前余额：<b>{{ me.balance }}</b> 点。输入人民币金额，扫码完成支付后点数自动到账。</p>
+        <p>当前余额：<b>{{ me.balance }}</b> 点。输入人民币金额，扫码完成支付后点数自动到账（1 元 = 100 点）。</p>
+        <el-alert
+          v-if="!payReady"
+          type="error"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+          title="支付渠道未配置，暂无法充值。请联系平台管理员在账号中心配置支付渠道。"
+        />
         <el-form inline style="margin-top: 12px" @submit.prevent>
           <el-form-item label="金额 (元)">
             <el-input-number v-model="rechargeYuan" :min="0.01" :max="10000" :step="10" :precision="2" />
@@ -38,7 +46,7 @@
             </el-radio-group>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="recharging" @click="createOrder">去支付</el-button>
+            <el-button type="primary" :loading="recharging" :disabled="!payReady" @click="createOrder">去支付</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -135,7 +143,7 @@
 </template>
 
 <script setup>
-import { nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import QRCode from 'qrcode'
@@ -158,6 +166,8 @@ const qrCanvas = ref(null)
 const pwdDialog = ref(false)
 const pwdForm = ref({ current: '', next: '' })
 const pwdLoading = ref(false)
+const payStatus = ref({ alipay: false, wechat: false })
+const payReady = computed(() => Boolean(payStatus.value[payMethod.value]))
 let pollTimer = null
 
 function yuan(cents) {
@@ -171,14 +181,16 @@ function formatTime(t) {
 async function load() {
   loading.value = true
   try {
-    const [meResp, logsResp, ordersResp] = await Promise.all([
+    const [meResp, logsResp, ordersResp, payResp] = await Promise.all([
       http.get('/dev/client/me'),
       http.get('/dev/client/logs'),
-      http.get('/dev/client/recharge/orders')
+      http.get('/dev/client/recharge/orders'),
+      http.get('/dev/pay/status')
     ])
     me.value = meResp.data
     logs.value = logsResp.data
     orders.value = ordersResp.data
+    payStatus.value = payResp.data
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '加载失败')
   } finally {

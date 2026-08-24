@@ -27,6 +27,7 @@ from app.schemas import (
     DeveloperUpdate,
     StatOut,
 )
+from app.services import payment_service
 
 router = APIRouter(prefix="/api/v1/admin", tags=["管理后台"])
 
@@ -93,10 +94,10 @@ def update_developer(developer_id: int, payload: DeveloperUpdate, db: Session = 
         if payload.billing_type not in ("internal", "external"):
             raise HTTPException(status_code=400, detail="invalid billing type")
         developer.billing_type = payload.billing_type
-    if payload.recharge is not None:
-        if payload.recharge < 0:
+    if payload.recharge_yuan is not None:
+        if payload.recharge_yuan < 0:
             raise HTTPException(status_code=400, detail="invalid recharge amount")
-        developer.balance += payload.recharge
+        developer.balance += int(round(payload.recharge_yuan * payment_service.POINTS_PER_YUAN))
     db.commit()
     db.refresh(developer)
     return developer
@@ -109,11 +110,10 @@ def admin_reset_key(developer_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="developer not found")
     api_key = generate_api_key()
     developer.api_key_hash = hash_api_key(api_key)
+    developer.api_key = api_key
     db.commit()
     db.refresh(developer)
-    response = DeveloperOut.model_validate(developer)
-    response.api_key_hash = f"KEY:{api_key}"
-    return response
+    return developer
 
 
 @router.get("/dashboard", response_model=DashboardOut, dependencies=[Depends(require_admin)])

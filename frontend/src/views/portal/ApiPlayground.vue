@@ -119,11 +119,9 @@
               title="AI 剪辑即对话剪辑：导入源文件后，用一句话描述需求，AI 自动理解并执行（抠图/增强/识别/合成/加水印/转格式等）。"
             />
             <div style="margin-bottom: 12px">
-              <el-button type="primary" plain @click="pickVoice">语音输入</el-button>
-              <el-button type="primary" plain @click="pickImage">图片输入</el-button>
-              <el-button type="primary" plain @click="pickMedia">文件输入</el-button>
+              <el-button type="primary" plain @click="pickMedia">导入源文件</el-button>
               <span v-if="attach" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ attach.file.name }}</span>
-              <span v-else style="margin-left: 12px; font-size: 12px; color: #909399">导入源文件（语音/图片/文件），再输入指令</span>
+              <span v-else style="margin-left: 12px; font-size: 12px; color: #909399">支持图片或音频，可从右侧按钮选择其他输入方式</span>
             </div>
             <div
               ref="chatBox"
@@ -154,6 +152,9 @@
                 style="flex: 1; min-width: 220px"
                 @keyup.enter="sendChat"
               />
+              <el-button plain @click="pickVoice">语音</el-button>
+              <el-button plain @click="pickImage">图片</el-button>
+              <el-button plain @click="pickMedia">文件</el-button>
               <el-button type="primary" :loading="chatLoading" @click="sendChat">发送</el-button>
             </div>
             <input ref="voiceInput" type="file" accept="audio/*" style="display: none" @change="onVoice" />

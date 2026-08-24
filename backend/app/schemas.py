@@ -20,6 +20,7 @@ class DeveloperOut(BaseModel):
     name: str
     email: str
     api_key_hash: str
+    api_key: Optional[str] = None
     billing_type: str
     balance: int
     status: str
@@ -35,7 +36,7 @@ class DeveloperUpdate(BaseModel):
     status: Optional[str] = None
     quota_limit: Optional[int] = None
     billing_type: Optional[str] = None
-    recharge: Optional[int] = None
+    recharge_yuan: Optional[float] = None
 
 
 class TaskOut(BaseModel):

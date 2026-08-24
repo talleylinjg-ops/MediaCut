@@ -304,7 +304,7 @@ def test_admin_recharge_and_stats():
     resp = client.put(
         f"/api/v1/admin/developers/{dev_id}",
         headers={"Authorization": f"Bearer {token}"},
-        json={"recharge": 500},
+        json={"recharge_yuan": 5},
     )
     assert resp.status_code == 200
     assert resp.json()["balance"] == billing.SIGNUP_BONUS + 500

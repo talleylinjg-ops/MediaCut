@@ -19,14 +19,13 @@
           </el-form-item>
         </el-form>
         <el-alert v-if="apiKey" type="success" :closable="false">
-          <p>注册成功！请妥善保存您的 API Key：</p>
+          <p>{{ isExisting ? '您已申请过 API Key' : '申请成功！请妥善保存您的 API Key：' }}</p>
           <p>
             <code style="word-break: break-all">{{ apiKey }}</code>
             <el-button size="small" type="primary" style="margin-left: 8px" @click="copyKey">复制</el-button>
           </p>
-          <el-button type="primary" style="margin-top: 8px" :loading="entering" @click="enterConsole">
-            进入客户控制台
-          </el-button>
+          <el-button type="primary" style="margin-top: 8px" @click="goPlayground">在线试用</el-button>
+          <el-button style="margin-top: 8px" @click="reapply">重新申请</el-button>
         </el-alert>
       </el-card>
     </div>
@@ -34,7 +33,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api'
@@ -43,14 +42,23 @@ import PortalNav from '../../components/PortalNav.vue'
 const router = useRouter()
 const form = reactive({ name: '', email: '', password: '' })
 const loading = ref(false)
-const entering = ref(false)
 const apiKey = ref('')
+const isExisting = ref(false)
+
+onMounted(() => {
+  const saved = localStorage.getItem('api_key')
+  if (saved) {
+    apiKey.value = saved
+    isExisting.value = true
+  }
+})
 
 async function submit() {
   loading.value = true
   try {
     const { data } = await http.post('/dev/register', form)
     apiKey.value = data.api_key
+    isExisting.value = false
     localStorage.setItem('api_key', data.api_key)
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '注册失败')
@@ -59,29 +67,28 @@ async function submit() {
   }
 }
 
+function reapply() {
+  localStorage.removeItem('api_key')
+  apiKey.value = ''
+  isExisting.value = false
+}
+
+function goPlayground() {
+  router.push('/client/try')
+}
+
 async function copyKey() {
   try {
     await navigator.clipboard.writeText(apiKey.value)
     ElMessage.success('已复制')
   } catch (e) {
-    ElMessage.error('复制失败，请手动复制')
-  }
-}
-
-async function enterConsole() {
-  entering.value = true
-  try {
-    const { data } = await http.post('/dev/client/login', {
-      email: form.email,
-      password: form.password
-    })
-    localStorage.setItem('client_token', data.token)
-    router.push('/client/console')
-  } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '自动登录失败，请手动登录')
-    router.push('/client/login')
-  } finally {
-    entering.value = false
+    const ta = document.createElement('textarea')
+    ta.value = apiKey.value
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    ElMessage.success('已复制')
   }
 }
 </script>
