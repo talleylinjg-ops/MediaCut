@@ -65,6 +65,64 @@
           </el-form-item>
         </el-form>
       </el-card>
+      <el-card style="max-width: 560px; margin-top: 20px">
+        <template #header><b>支付渠道配置</b></template>
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px"
+          title="配置后客户控制台即可真实收款（扫码支付）。需在支付宝开放平台 / 微信商户平台申请商户资质并获取密钥。未配置时充值下单会提示渠道未配置。"
+        />
+        <el-form label-width="110px" @submit.prevent>
+          <el-divider content-position="left">支付宝（当面付）</el-divider>
+          <el-form-item label="当前状态">
+            <el-tag :type="cfg.alipay_configured ? 'success' : 'danger'">
+              {{ cfg.alipay_configured ? '已配置' : '未配置' }}
+            </el-tag>
+          </el-form-item>
+          <el-form-item label="APPID">
+            <el-input v-model="pay.alipay_appid" placeholder="支付宝应用 APPID" />
+          </el-form-item>
+          <el-form-item label="应用私钥">
+            <el-input v-model="pay.alipay_private_key" type="textarea" :rows="3" placeholder="-----BEGIN RSA PRIVATE KEY-----" />
+          </el-form-item>
+          <el-form-item label="支付宝公钥">
+            <el-input v-model="pay.alipay_public_key" type="textarea" :rows="3" placeholder="支付宝公钥内容" />
+          </el-form-item>
+
+          <el-divider content-position="left">微信支付（Native 扫码）</el-divider>
+          <el-form-item label="当前状态">
+            <el-tag :type="cfg.wechat_configured ? 'success' : 'danger'">
+              {{ cfg.wechat_configured ? '已配置' : '未配置' }}
+            </el-tag>
+          </el-form-item>
+          <el-form-item label="AppID">
+            <el-input v-model="pay.wechat_appid" placeholder="微信公众平台 AppID" />
+          </el-form-item>
+          <el-form-item label="商户号">
+            <el-input v-model="pay.wechat_mchid" placeholder="微信支付商户号" />
+          </el-form-item>
+          <el-form-item label="APIv3 密钥">
+            <el-input v-model="pay.wechat_apiv3_key" placeholder="32 位 APIv3 密钥" />
+          </el-form-item>
+          <el-form-item label="证书序列号">
+            <el-input v-model="pay.wechat_serial_no" placeholder="商户 API 证书序列号" />
+          </el-form-item>
+          <el-form-item label="商户私钥">
+            <el-input v-model="pay.wechat_private_key" type="textarea" :rows="3" placeholder="-----BEGIN PRIVATE KEY-----" />
+          </el-form-item>
+
+          <el-divider content-position="left">回调地址</el-divider>
+          <el-form-item label="回调基础地址">
+            <el-input v-model="pay.notify_base" placeholder="如 https://your-domain.com，用于支付平台回调通知" />
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" :loading="savingPay" @click="savePayConfig">保存支付配置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
     </el-main>
   </el-container>
 </template>
@@ -85,6 +143,19 @@ const cfg = reactive({ admin_username: '', modelscope_configured: false, models:
 const configured = ref(false)
 const tokenInput = ref('')
 const savingToken = ref(false)
+
+const pay = reactive({
+  alipay_appid: '',
+  alipay_private_key: '',
+  alipay_public_key: '',
+  wechat_appid: '',
+  wechat_mchid: '',
+  wechat_apiv3_key: '',
+  wechat_serial_no: '',
+  wechat_private_key: '',
+  notify_base: ''
+})
+const savingPay = ref(false)
 
 async function changePassword() {
   if (pwd.new_password.length < 6) {
@@ -145,6 +216,35 @@ async function clearToken() {
     ElMessage.error(e.response?.data?.detail || '清除失败')
   } finally {
     savingToken.value = false
+  }
+}
+
+async function savePayConfig() {
+  savingPay.value = true
+  const body = {}
+  const map = {
+    alipay_appid: 'pay_alipay_appid',
+    alipay_private_key: 'pay_alipay_private_key',
+    alipay_public_key: 'pay_alipay_public_key',
+    wechat_appid: 'pay_wechat_appid',
+    wechat_mchid: 'pay_wechat_mchid',
+    wechat_apiv3_key: 'pay_wechat_apiv3_key',
+    wechat_serial_no: 'pay_wechat_serial_no',
+    wechat_private_key: 'pay_wechat_private_key',
+    notify_base: 'pay_notify_base'
+  }
+  for (const [localKey, apiKey] of Object.entries(map)) {
+    if (pay[localKey]) body[apiKey] = pay[localKey]
+  }
+  try {
+    await http.put('/admin/config', body)
+    ElMessage.success('支付配置已保存')
+    Object.keys(pay).forEach((k) => (pay[k] = ''))
+    await loadConfig()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '保存失败')
+  } finally {
+    savingPay.value = false
   }
 }
 

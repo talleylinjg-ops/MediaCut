@@ -76,10 +76,21 @@ class ConfigOut(BaseModel):
     admin_username: str
     modelscope_configured: bool
     models: dict
+    alipay_configured: bool
+    wechat_configured: bool
 
 
 class ConfigUpdate(BaseModel):
     modelscope_api_token: Optional[str] = None
+    pay_alipay_appid: Optional[str] = None
+    pay_alipay_private_key: Optional[str] = None
+    pay_alipay_public_key: Optional[str] = None
+    pay_wechat_appid: Optional[str] = None
+    pay_wechat_mchid: Optional[str] = None
+    pay_wechat_apiv3_key: Optional[str] = None
+    pay_wechat_serial_no: Optional[str] = None
+    pay_wechat_private_key: Optional[str] = None
+    pay_notify_base: Optional[str] = None
 
 
 class ClientLogin(BaseModel):
@@ -100,14 +111,16 @@ class RechargeResponse(BaseModel):
 
 
 class RechargeOrderCreate(BaseModel):
-    amount: int
+    amount_yuan: float
     payment_method: str = "alipay"
 
 
 class RechargeOrderOut(BaseModel):
     order_no: str
-    amount: int
-    payment_method: str
+    amount_cents: int
+    points: int
+    payment_provider: str
+    qr_content: Optional[str] = None
     status: str
     created_at: datetime
 

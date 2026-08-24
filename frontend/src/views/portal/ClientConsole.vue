@@ -1,35 +1,35 @@
 <template>
-  <div>
+  <div style="min-height: 100vh; display: flex; flex-direction: column">
     <PortalNav />
-    <div style="padding: 40px; max-width: 900px; margin: 0 auto">
+    <div style="padding: 40px; max-width: 900px; margin: 0 auto; flex: 1">
       <el-card v-if="me">
         <div style="display: flex; justify-content: space-between; align-items: center">
           <h2 style="margin: 0">控制台</h2>
-          <el-button type="danger" plain @click="logout">退出登录</el-button>
+          <div>
+            <el-button @click="pwdDialog = true" style="margin-right: 8px">修改密码</el-button>
+            <el-button type="danger" plain @click="logout">退出登录</el-button>
+          </div>
         </div>
         <p>开发者：{{ me.name }}（{{ me.email }}）</p>
         <el-row :gutter="16" style="margin-top: 16px">
-          <el-col :span="6">
+          <el-col :span="8">
             <el-statistic title="计费类型" :value="me.billing_type === 'internal' ? '内部免费' : '对外计费'" />
           </el-col>
-          <el-col :span="6">
+          <el-col :span="8">
             <el-statistic title="余额 (点)" :value="me.balance" />
           </el-col>
-          <el-col :span="6">
-            <el-statistic title="今日配额" :value="me.quota_used" />
-          </el-col>
-          <el-col :span="6">
-            <el-statistic title="配额上限" :value="me.quota_limit" />
+          <el-col :span="8">
+            <el-statistic title="点数兑换" value="1 元 = 100 点" />
           </el-col>
         </el-row>
       </el-card>
 
       <el-card style="margin-top: 20px">
         <h3>自助充值</h3>
-        <p>当前余额：<b>{{ me.balance }}</b> 点。生成订单后通过支付方式完成支付，到账后可用于抵扣调用费用。</p>
+        <p>当前余额：<b>{{ me.balance }}</b> 点。输入人民币金额，扫码完成支付后点数自动到账。</p>
         <el-form inline style="margin-top: 12px" @submit.prevent>
-          <el-form-item label="金额 (点)">
-            <el-input-number v-model="rechargeAmount" :min="1" :max="1000000" :step="100" />
+          <el-form-item label="金额 (元)">
+            <el-input-number v-model="rechargeYuan" :min="0.01" :max="10000" :step="10" :precision="2" />
           </el-form-item>
           <el-form-item label="支付方式">
             <el-radio-group v-model="payMethod">
@@ -47,9 +47,12 @@
         <h3>充值记录</h3>
         <el-table :data="orders" size="small">
           <el-table-column prop="order_no" label="订单号" width="180" />
-          <el-table-column prop="amount" label="金额 (点)" width="110" />
+          <el-table-column label="金额" width="110">
+            <template #default="{ row }">{{ yuan(row.amount_cents) }} 元</template>
+          </el-table-column>
+          <el-table-column prop="points" label="到账点数" width="110" />
           <el-table-column label="支付方式" width="100">
-            <template #default="{ row }">{{ row.payment_method === 'alipay' ? '支付宝' : '微信支付' }}</template>
+            <template #default="{ row }">{{ row.payment_provider === 'alipay' ? '支付宝' : '微信支付' }}</template>
           </el-table-column>
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
@@ -75,21 +78,6 @@
       </el-card>
 
       <el-card style="margin-top: 20px">
-        <h3>修改密码</h3>
-        <el-form label-width="110px" style="max-width: 420px" @submit.prevent>
-          <el-form-item label="当前密码">
-            <el-input v-model="pwdForm.current" type="password" show-password />
-          </el-form-item>
-          <el-form-item label="新密码">
-            <el-input v-model="pwdForm.next" type="password" show-password />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" :loading="pwdLoading" @click="changePassword">保存</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-
-      <el-card style="margin-top: 20px">
         <h3>最近调用记录</h3>
         <el-table :data="logs" v-loading="loading">
           <el-table-column prop="endpoint" label="接口" />
@@ -105,31 +93,52 @@
         </el-table>
       </el-card>
 
-      <el-dialog v-model="payDialog" title="收银台（模拟支付）" width="420px">
-        <div style="text-align: center">
-          <div style="font-size: 13px; color: #909399">支付金额</div>
-          <div style="font-size: 28px; font-weight: 700; margin: 8px 0">{{ order ? order.amount : 0 }} 点</div>
-          <div
-            style="width: 180px; height: 180px; border: 1px solid #e4e7ed; margin: 12px auto; display: flex; align-items: center; justify-content: center; color: #909399; font-size: 13px"
-          >
-            {{ order?.payment_method === 'alipay' ? '支付宝' : '微信支付' }}<br />付款二维码（模拟）
-          </div>
-          <div style="font-size: 13px; color: #606266">订单号：{{ order ? order.order_no : '' }}</div>
-          <div style="color: #e6a23c; font-size: 13px; margin-top: 8px">演示环境为模拟支付，点击下方按钮模拟扫码支付完成。</div>
-        </div>
-        <template #footer>
-          <el-button @click="payDialog = false">取消</el-button>
-          <el-button type="primary" :loading="paying" @click="confirmPay">模拟支付完成</el-button>
-        </template>
-      </el-dialog>
+      <div style="text-align: center; margin-top: 32px; color: #909399; font-size: 14px">
+        联系我们：<a href="mailto:172645428@qq.com" style="color: #409eff">172645428@qq.com</a>
+      </div>
     </div>
+
+    <el-dialog v-model="payDialog" title="扫码支付" width="420px" :close-on-click-modal="false" @closed="stopPolling">
+      <div style="text-align: center">
+        <div style="font-size: 13px; color: #909399">支付金额</div>
+        <div style="font-size: 28px; font-weight: 700; margin: 8px 0">
+          {{ yuan(order ? order.amount_cents : 0) }} 元（{{ order ? order.points : 0 }} 点）
+        </div>
+        <div style="margin: 12px auto">
+          <canvas ref="qrCanvas" style="width: 200px; height: 200px" />
+        </div>
+        <div style="font-size: 13px; color: #606266">
+          请使用{{ order?.payment_provider === 'alipay' ? '支付宝' : '微信' }}扫码支付
+        </div>
+        <div style="font-size: 12px; color: #909399; margin-top: 4px">订单号：{{ order ? order.order_no : '' }}</div>
+      </div>
+      <template #footer>
+        <el-button :loading="paying" @click="cancelPay">取消支付</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="pwdDialog" title="修改密码" width="420px">
+      <el-form label-width="90px" @submit.prevent>
+        <el-form-item label="当前密码">
+          <el-input v-model="pwdForm.current" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input v-model="pwdForm.next" type="password" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="pwdDialog = false">取消</el-button>
+        <el-button type="primary" :loading="pwdLoading" @click="changePassword">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import QRCode from 'qrcode'
 import http from '../../api'
 import PortalNav from '../../components/PortalNav.vue'
 
@@ -139,14 +148,21 @@ const logs = ref([])
 const orders = ref([])
 const loading = ref(false)
 const newKey = ref('')
-const rechargeAmount = ref(100)
+const rechargeYuan = ref(10)
 const payMethod = ref('alipay')
 const recharging = ref(false)
 const paying = ref(false)
 const payDialog = ref(false)
 const order = ref(null)
+const qrCanvas = ref(null)
+const pwdDialog = ref(false)
 const pwdForm = ref({ current: '', next: '' })
 const pwdLoading = ref(false)
+let pollTimer = null
+
+function yuan(cents) {
+  return (cents / 100).toFixed(2)
+}
 
 function formatTime(t) {
   return t ? t.replace('T', ' ').slice(0, 19) : ''
@@ -174,11 +190,16 @@ async function createOrder() {
   recharging.value = true
   try {
     const { data } = await http.post('/dev/client/recharge/order', {
-      amount: rechargeAmount.value,
+      amount_yuan: rechargeYuan.value,
       payment_method: payMethod.value
     })
     order.value = data
     payDialog.value = true
+    await nextTick()
+    if (qrCanvas.value && data.qr_content) {
+      await QRCode.toCanvas(qrCanvas.value, data.qr_content, { width: 200, margin: 1 })
+    }
+    startPolling()
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '创建订单失败')
   } finally {
@@ -186,19 +207,36 @@ async function createOrder() {
   }
 }
 
-async function confirmPay() {
-  paying.value = true
-  try {
-    const { data } = await http.post(`/dev/client/recharge/order/${order.value.order_no}/pay`)
-    payDialog.value = false
-    me.value.balance = data.balance
-    ElMessage.success(`支付成功，当前余额 ${data.balance} 点`)
-    load()
-  } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '支付失败')
-  } finally {
-    paying.value = false
+function startPolling() {
+  stopPolling()
+  pollTimer = setInterval(async () => {
+    try {
+      const { data } = await http.get(`/dev/client/recharge/order/${order.value.order_no}`)
+      if (data.status === 'paid') {
+        stopPolling()
+        payDialog.value = false
+        const meResp = await http.get('/dev/client/me')
+        me.value = meResp.data
+        ElMessage.success(`支付成功，到账 ${order.value.points} 点，当前余额 ${me.value.balance} 点`)
+        load()
+      }
+    } catch (e) {
+      stopPolling()
+      ElMessage.error('查询订单状态失败')
+    }
+  }, 3000)
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
   }
+}
+
+function cancelPay() {
+  stopPolling()
+  payDialog.value = false
 }
 
 async function resetKey() {
@@ -220,6 +258,7 @@ async function changePassword() {
     })
     pwdForm.value.current = ''
     pwdForm.value.next = ''
+    pwdDialog.value = false
     ElMessage.success('密码修改成功')
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '修改失败')

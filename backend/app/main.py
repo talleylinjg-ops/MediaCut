@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import models
-from app.api import admin, ai, audio, dev, image, result, tasks
+from app.api import admin, ai, audio, dev, image, pay, result, tasks
 from app.core import billing
 from app.core.security import hash_api_key
 from app.database import Base, SessionLocal, engine
@@ -115,3 +115,4 @@ app.include_router(ai.router)
 app.include_router(tasks.router)
 app.include_router(result.router)
 app.include_router(admin.router)
+app.include_router(pay.router)

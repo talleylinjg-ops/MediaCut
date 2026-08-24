@@ -54,6 +54,8 @@ def get_config():
         admin_username=ADMIN_USERNAME,
         modelscope_configured=bool(settings.get_modelscope_token()),
         models=MODELSCOPE_MODELS,
+        alipay_configured=bool(settings.get_pay_config("pay_alipay_appid")),
+        wechat_configured=bool(settings.get_pay_config("pay_wechat_mchid")),
     )
 
 
@@ -61,10 +63,11 @@ def get_config():
 def update_config(payload: ConfigUpdate):
     if payload.modelscope_api_token is not None:
         token = payload.modelscope_api_token.strip()
-        if token:
-            settings.set_modelscope_token(token)
-        else:
-            settings.set_modelscope_token("")
+        settings.set_modelscope_token(token)
+    for key in settings.PAY_CONFIG_KEYS:
+        value = getattr(payload, key, None)
+        if value is not None:
+            settings.set_pay_config(key, value.strip())
     return {"ok": True}
 
 

@@ -8,7 +8,7 @@
         :closable="false"
         show-icon
         style="margin-bottom: 16px"
-        title="填入 API Key 即可真实调用接口。没有 Key 请先到「申请 API Key」注册（新注册赠送 100 点）。"
+        title="填入 API Key 即可真实调用接口。没有 Key 请先点击「申请」注册（新注册赠送 100 点）。"
       />
 
       <el-card>
@@ -22,6 +22,7 @@
             @keyup.enter="saveKey"
           />
           <el-button type="primary" :loading="savingKey" @click="saveKey">保存</el-button>
+          <el-button type="success" plain @click="$router.push('/register')">申请</el-button>
           <span v-if="keyInfo" style="font-size: 12px; color: #67c23a">
             Key 有效：{{ keyInfo.name }}（余额 {{ keyInfo.balance }} 点）
           </span>
@@ -37,10 +38,12 @@
 
         <el-tabs v-model="tab">
           <el-tab-pane label="图片剪辑" name="image">
+            <div style="margin-bottom: 12px">
+              <el-button type="primary" plain @click="imgPicker.click()">导入源文件</el-button>
+              <span v-if="imgFile" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ imgFile.name }}</span>
+              <input ref="imgPicker" type="file" accept="image/*" style="display: none" @change="onImgPick" />
+            </div>
             <el-form label-width="90px" style="max-width: 520px">
-              <el-form-item label="上传图片">
-                <input type="file" accept="image/*" @change="imgFile = $event.target.files[0]" />
-              </el-form-item>
               <el-form-item label="滤镜">
                 <el-select v-model="img.filter" style="width: 200px">
                   <el-option label="无" value="" />
@@ -75,10 +78,12 @@
           </el-tab-pane>
 
           <el-tab-pane label="音频剪辑" name="audio">
+            <div style="margin-bottom: 12px">
+              <el-button type="primary" plain @click="audPicker.click()">导入源文件</el-button>
+              <span v-if="audFile" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ audFile.name }}</span>
+              <input ref="audPicker" type="file" accept="audio/*" style="display: none" @change="onAudPick" />
+            </div>
             <el-form label-width="90px" style="max-width: 520px">
-              <el-form-item label="上传音频">
-                <input type="file" accept="audio/*" @change="audFile = $event.target.files[0]" />
-              </el-form-item>
               <el-form-item label="裁剪起点 (s)">
                 <el-input-number v-model="aud.start" :min="0" :step="0.5" />
               </el-form-item>
@@ -105,56 +110,27 @@
             </div>
           </el-tab-pane>
 
-          <el-tab-pane label="AI 处理" name="ai">
-            <el-form label-width="90px" style="max-width: 520px">
-              <el-form-item label="上传文件">
-                <input
-                  type="file"
-                  :accept="aiType === 'asr' ? 'audio/*' : 'image/*'"
-                  @change="aiFile = $event.target.files[0]"
-                />
-                <span v-if="aiFile" style="margin-left: 12px; font-size: 12px; color: #67c23a">已选择：{{ aiFile.name }}</span>
-              </el-form-item>
-              <el-form-item label="任务类型">
-                <el-select v-model="aiType" style="width: 200px">
-                  <el-option label="人像抠图 (10点)" value="matting" />
-                  <el-option label="画质增强 (15点)" value="enhance" />
-                  <el-option label="语音识别 ASR (10点)" value="asr" />
-                  <el-option label="语音合成 TTS (5点)" value="tts" />
-                </el-select>
-              </el-form-item>
-              <el-form-item v-if="aiType === 'tts'" label="合成文本">
-                <el-input v-model="ttsText" placeholder="输入要合成语音的文本" />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" :loading="running" @click="runAI">提交 AI 任务</el-button>
-              </el-form-item>
-            </el-form>
+          <el-tab-pane label="AI 剪辑" name="chat">
             <el-alert
-              v-if="aiError"
-              type="warning"
+              type="info"
               :closable="false"
-              :title="aiError"
               show-icon
-              style="margin-top: 12px"
+              style="margin-bottom: 12px"
+              title="AI 剪辑即对话剪辑：导入源文件后，用一句话描述需求，AI 自动理解并执行（抠图/增强/识别/合成/加水印/转格式等）。"
             />
-            <div v-if="aiResultKind === 'image'" style="margin-top: 12px">
-              <img :src="aiResultUrl" style="max-width: 100%; max-height: 400px; border: 1px solid #e4e7ed" />
+            <div style="margin-bottom: 12px">
+              <el-button type="primary" plain @click="pickVoice">语音输入</el-button>
+              <el-button type="primary" plain @click="pickImage">图片输入</el-button>
+              <el-button type="primary" plain @click="pickMedia">文件输入</el-button>
+              <span v-if="attach" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ attach.file.name }}</span>
+              <span v-else style="margin-left: 12px; font-size: 12px; color: #909399">导入源文件（语音/图片/文件），再输入指令</span>
             </div>
-            <div v-if="aiResultKind === 'audio'" style="margin-top: 12px">
-              <audio :src="aiResultUrl" controls style="width: 100%" />
-            </div>
-            <div v-if="aiResultKind === 'text'" style="margin-top: 12px">
-              <el-card>识别结果：<b>{{ aiText }}</b></el-card>
-            </div>
-          </el-tab-pane>
-          <el-tab-pane label="AI 对话剪辑" name="chat">
             <div
               ref="chatBox"
               style="border: 1px solid #e4e7ed; border-radius: 8px; padding: 16px; min-height: 240px; max-height: 420px; overflow: auto"
             >
               <div v-if="messages.length === 0" style="color: #909399; font-size: 13px">
-                用一句话描述剪辑需求，支持四种输入：文字（默认）、语音、图片、文件。例如「给图片加水印」「从5秒到20秒」「大声一点」「识别语音内容」。
+                例如：「给图片加水印」「转png格式」「抠图」「画质增强」「从5秒到20秒」「大声一点」「识别语音内容」「把这段文字转语音」。
               </div>
               <div v-for="(m, i) in messages" :key="i" style="margin-bottom: 12px">
                 <div
@@ -172,10 +148,6 @@
               </div>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center">
-              <el-button size="small" type="primary" plain @click="pickVoice">语音输入</el-button>
-              <el-button size="small" type="primary" plain @click="pickImage">图片输入</el-button>
-              <el-button size="small" type="primary" plain @click="pickMedia">文件输入</el-button>
-              <span style="font-size: 12px; color: #909399">上传源文件后，用文字描述如何处理</span>
               <el-input
                 v-model="chatText"
                 placeholder="输入文字指令，例如：给图片加水印"
@@ -184,7 +156,6 @@
               />
               <el-button type="primary" :loading="chatLoading" @click="sendChat">发送</el-button>
             </div>
-            <div v-if="attachMeta" style="margin-top: 8px; font-size: 12px; color: #409eff">已附加：{{ attachMeta }}</div>
             <input ref="voiceInput" type="file" accept="audio/*" style="display: none" @change="onVoice" />
             <input ref="imageInput" type="file" accept="image/*" style="display: none" @change="onImage" />
             <input ref="mediaInput" type="file" accept="audio/*,image/*" style="display: none" @change="onMedia" />
@@ -208,21 +179,15 @@ const savingKey = ref(false)
 const keyInfo = ref(null)
 const keyInfoError = ref('')
 
+const imgPicker = ref(null)
 const imgFile = ref(null)
 const img = reactive({ filter: '', width: 0, watermark: '', format: '' })
 const imgResult = ref('')
 
+const audPicker = ref(null)
 const audFile = ref(null)
 const aud = reactive({ start: 0, end: 0, gain: 1, format: '' })
 const audResult = ref('')
-
-const aiType = ref('matting')
-const aiFile = ref(null)
-const ttsText = ref('')
-const aiResultKind = ref('')
-const aiResultUrl = ref('')
-const aiText = ref('')
-const aiError = ref('')
 
 const chatText = ref('')
 const chatLoading = ref(false)
@@ -232,7 +197,7 @@ const voiceInput = ref(null)
 const imageInput = ref(null)
 const mediaInput = ref(null)
 const attach = ref(null)
-const attachMeta = computed(() => (attach.value ? `${attach.value.type} · ${attach.value.file.name}` : ''))
+const attachMeta = computed(() => (attach.value ? `导入文件：${attach.value.file.name}` : ''))
 
 onMounted(async () => {
   const k = localStorage.getItem('api_key')
@@ -241,7 +206,7 @@ onMounted(async () => {
     await validateKey(true)
   }
   const q = new URLSearchParams(location.search).get('tab')
-  if (['image', 'audio', 'ai', 'chat'].includes(q)) {
+  if (['image', 'audio', 'chat'].includes(q)) {
     tab.value = q
   }
 })
@@ -282,6 +247,71 @@ async function saveKey() {
   }
 }
 
+function onImgPick(e) {
+  const f = e.target.files[0]
+  if (f) imgFile.value = f
+  e.target.value = ''
+}
+
+function onAudPick(e) {
+  const f = e.target.files[0]
+  if (f) audFile.value = f
+  e.target.value = ''
+}
+
+function buildParams() {
+  const params = {}
+  if (img.filter) params.filter = img.filter
+  if (img.width > 0) params.resize = { width: img.width }
+  if (img.watermark) params.watermark = { text: img.watermark, position: [20, 20], size: 32, color: [255, 255, 255] }
+  if (img.format) params.output_format = img.format
+  return params
+}
+
+async function runImage() {
+  if (!apiKey.value) return ElMessage.warning('请先填写并保存 API Key')
+  if (!imgFile.value) return ElMessage.warning('请先导入源文件')
+  running.value = true
+  try {
+    const form = new FormData()
+    form.append('file', imgFile.value)
+    form.append('params', JSON.stringify(buildParams()))
+    const resp = await http.post('/image/edit', form, {
+      headers: { Authorization: `Bearer ${apiKey.value}` },
+      responseType: 'blob'
+    })
+    imgResult.value = URL.createObjectURL(resp.data)
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '处理失败')
+  } finally {
+    running.value = false
+  }
+}
+
+async function runAudio() {
+  if (!apiKey.value) return ElMessage.warning('请先填写并保存 API Key')
+  if (!audFile.value) return ElMessage.warning('请先导入源文件')
+  running.value = true
+  try {
+    const params = {}
+    if (aud.end > aud.start) params.crop = { start: aud.start, end: aud.end }
+    if (aud.gain && aud.gain !== 1) params.volume = { gain: aud.gain }
+    if (aud.format) params.output_format = aud.format
+    const form = new FormData()
+    form.append('file', audFile.value)
+    form.append('params', JSON.stringify(params))
+    const resp = await http.post('/audio/edit', form, {
+      headers: { Authorization: `Bearer ${apiKey.value}` },
+      responseType: 'blob'
+    })
+    audResult.value = URL.createObjectURL(resp.data)
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '处理失败')
+  } finally {
+    running.value = false
+  }
+}
+
 function pickVoice() {
   voiceInput.value.click()
 }
@@ -315,9 +345,10 @@ function scrollDown() {
 
 async function sendChat() {
   if (chatLoading.value) return
+  if (!apiKey.value) return ElMessage.warning('请先填写并保存 API Key')
   const text = chatText.value.trim()
   const at = attach.value
-  if (!text && !at) return ElMessage.warning('请输入指令或附加输入')
+  if (!text && !at) return ElMessage.warning('请导入源文件或输入指令')
   chatLoading.value = true
   messages.value.push({ role: 'user', text: text || '（语音/文件输入）', attachments: at ? attachMeta.value : '' })
   scrollDown()
@@ -348,7 +379,7 @@ async function sendChat() {
       }
     }
     if (!out) {
-      messages.value.push({ role: 'assistant', text: '处理超时，请稍后在客户控制台查看' })
+      messages.value.push({ role: 'assistant', text: '处理超时，请稍后在控制台查看' })
       chatLoading.value = false
       attach.value = null
       chatText.value = ''
@@ -371,113 +402,6 @@ async function sendChat() {
     attach.value = null
     chatText.value = ''
     scrollDown()
-  }
-}
-
-function buildParams() {
-  const params = {}
-  if (img.filter) params.filter = img.filter
-  if (img.width > 0) params.resize = { width: img.width }
-  if (img.watermark) params.watermark = { text: img.watermark, position: [20, 20], size: 32, color: [255, 255, 255] }
-  if (img.format) params.output_format = img.format
-  return params
-}
-
-async function runImage() {
-  if (!apiKey.value) return ElMessage.warning('请先填写 API Key')
-  if (!imgFile.value) return ElMessage.warning('请选择图片文件')
-  running.value = true
-  try {
-    const form = new FormData()
-    form.append('file', imgFile.value)
-    form.append('params', JSON.stringify(buildParams()))
-    const resp = await http.post('/image/edit', form, {
-      headers: { Authorization: `Bearer ${apiKey.value}` },
-      responseType: 'blob'
-    })
-    imgResult.value = URL.createObjectURL(resp.data)
-  } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '处理失败')
-  } finally {
-    running.value = false
-  }
-}
-
-async function runAudio() {
-  if (!apiKey.value) return ElMessage.warning('请先填写 API Key')
-  if (!audFile.value) return ElMessage.warning('请选择音频文件')
-  running.value = true
-  try {
-    const params = {}
-    if (aud.end > aud.start) params.crop = { start: aud.start, end: aud.end }
-    if (aud.gain && aud.gain !== 1) params.volume = { gain: aud.gain }
-    if (aud.format) params.output_format = aud.format
-    const form = new FormData()
-    form.append('file', audFile.value)
-    form.append('params', JSON.stringify(params))
-    const resp = await http.post('/audio/edit', form, {
-      headers: { Authorization: `Bearer ${apiKey.value}` },
-      responseType: 'blob'
-    })
-    audResult.value = URL.createObjectURL(resp.data)
-  } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '处理失败')
-  } finally {
-    running.value = false
-  }
-}
-
-async function runAI() {
-  if (!apiKey.value) return ElMessage.warning('请先填写 API Key')
-  if (aiType.value === 'tts') {
-    if (!ttsText.value) return ElMessage.warning('请输入合成文本')
-  } else if (!aiFile.value) {
-    return ElMessage.warning('请选择文件')
-  }
-  running.value = true
-  aiError.value = ''
-  aiResultKind.value = ''
-  try {
-    const form = new FormData()
-    if (aiType.value === 'tts') {
-      form.append('text', ttsText.value)
-    } else {
-      form.append('file', aiFile.value)
-    }
-    const headers = { Authorization: `Bearer ${apiKey.value}` }
-    const submit = await http.post(`/ai/${aiType.value}`, form, { headers })
-    const taskId = submit.data.task_id
-
-    for (let i = 0; i < 60; i++) {
-      await new Promise((r) => setTimeout(r, 1000))
-      const poll = await http.get(`/tasks/${taskId}`, { headers })
-      const st = poll.data.status
-      if (st === 'succeeded') {
-        const name = poll.data.result_url.split('/').pop()
-        const fileResp = await http.get(`/result/${taskId}/${name}`, { headers, responseType: 'blob' })
-        const kind = fileResp.headers['content-type']
-        if (kind.includes('image')) {
-          aiResultKind.value = 'image'
-          aiResultUrl.value = URL.createObjectURL(fileResp.data)
-        } else if (kind.includes('audio')) {
-          aiResultKind.value = 'audio'
-          aiResultUrl.value = URL.createObjectURL(fileResp.data)
-        } else {
-          aiResultKind.value = 'text'
-          aiText.value = await fileResp.data.text()
-        }
-        return
-      }
-      if (st === 'failed') {
-        aiError.value = poll.data.error || '任务失败'
-        return
-      }
-    }
-    aiError.value = '任务超时，请稍后在控制台查看'
-  } catch (e) {
-    aiError.value = e.response?.data?.detail || 'AI 任务提交失败'
-  } finally {
-    running.value = false
   }
 }
 </script>

@@ -246,21 +246,21 @@ def test_client_self_recharge():
     token = resp.json()["token"]
 
     resp = client.post(
-        "/api/v1/dev/client/recharge",
+        "/api/v1/dev/client/recharge/order",
         headers={"Authorization": f"Bearer {token}"},
-        json={"amount": 300},
+        json={"amount_yuan": 10, "payment_method": "alipay"},
     )
-    assert resp.status_code == 200
-    assert resp.json()["balance"] == billing.SIGNUP_BONUS + 300
+    assert resp.status_code == 400
+    assert "支付渠道未配置" in resp.json()["detail"]
 
     resp = client.post(
-        "/api/v1/dev/client/recharge",
+        "/api/v1/dev/client/recharge/order",
         headers={"Authorization": f"Bearer {token}"},
-        json={"amount": 0},
+        json={"amount_yuan": 0, "payment_method": "alipay"},
     )
     assert resp.status_code == 400
 
-    resp = client.post("/api/v1/dev/client/recharge", json={"amount": 100})
+    resp = client.post("/api/v1/dev/client/recharge/order", json={"amount_yuan": 10, "payment_method": "alipay"})
     assert resp.status_code == 401
 
 

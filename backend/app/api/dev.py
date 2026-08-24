@@ -1,5 +1,4 @@
 import secrets
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -28,10 +27,8 @@ from app.schemas import (
     LogOut,
     RechargeOrderCreate,
     RechargeOrderOut,
-    RechargePayResponse,
-    RechargeRequest,
-    RechargeResponse,
 )
+from app.services import payment_service
 
 router = APIRouter(prefix="/api/v1/dev", tags=["开发者"])
 
@@ -103,65 +100,53 @@ def client_logs(developer: Developer = Depends(authenticate_client), db: Session
     )
 
 
-@router.post("/client/recharge", response_model=RechargeResponse)
-def client_recharge(
-    payload: RechargeRequest,
-    developer: Developer = Depends(authenticate_client),
-    db: Session = Depends(get_db),
-):
-    if payload.amount < 1 or payload.amount > 1000000:
-        raise HTTPException(status_code=400, detail="invalid amount")
-    developer.balance += payload.amount
-    db.commit()
-    db.refresh(developer)
-    return RechargeResponse(balance=developer.balance)
-
-
-@router.get("/key/info", response_model=KeyInfoOut)
-def key_info(developer: Developer = Depends(authenticate_developer)):
-    return developer
-
-
-@router.post("/client/password")
-def client_change_password(
-    payload: ClientPasswordChange,
-    developer: Developer = Depends(authenticate_client),
-    db: Session = Depends(get_db),
-):
-    if not verify_password(payload.current_password, developer.password_hash):
-        raise HTTPException(status_code=401, detail="current password incorrect")
-    if not payload.new_password or len(payload.new_password) < 6:
-        raise HTTPException(status_code=400, detail="new password must be at least 6 characters")
-    developer.password_hash = hash_password(payload.new_password)
-    db.commit()
-    return {"ok": True}
-
-
 @router.post("/client/recharge/order", response_model=RechargeOrderOut)
 def create_recharge_order(
     payload: RechargeOrderCreate,
     developer: Developer = Depends(authenticate_client),
     db: Session = Depends(get_db),
 ):
-    if payload.amount < 1 or payload.amount > 1000000:
-        raise HTTPException(status_code=400, detail="invalid amount")
+    if payload.amount_yuan < 0.01 or payload.amount_yuan > 10000:
+        raise HTTPException(status_code=400, detail="金额需在 0.01 ~ 10000 元之间")
     if payload.payment_method not in ("alipay", "wechat"):
         raise HTTPException(status_code=400, detail="invalid payment method")
+
+    points = int(round(payload.amount_yuan * payment_service.POINTS_PER_YUAN))
     order = RechargeOrder(
         order_no=secrets.token_hex(8).upper(),
         developer_id=developer.id,
-        amount=payload.amount,
-        payment_method=payload.payment_method,
+        amount_cents=int(round(payload.amount_yuan * 100)),
+        points=points,
+        payment_provider=payload.payment_method,
         status="pending",
     )
     db.add(order)
     db.commit()
     db.refresh(order)
+
+    subject = f"媒体剪辑API充值-{order.order_no}"
+    try:
+        if payload.payment_method == "alipay":
+            qr = payment_service.create_alipay_qr(order.order_no, payload.amount_yuan, subject)
+        else:
+            qr = payment_service.create_wechat_native(order.order_no, payload.amount_yuan, subject)
+    except payment_service.PayNotConfigured as exc:
+        db.delete(order)
+        db.commit()
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        db.delete(order)
+        db.commit()
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    order.qr_content = qr
+    db.commit()
+    db.refresh(order)
     return order
 
 
-@router.post("/client/recharge/order/{order_no}/pay", response_model=RechargePayResponse)
-def pay_recharge_order(
+@router.get("/client/recharge/order/{order_no}", response_model=RechargeOrderOut)
+def get_recharge_order(
     order_no: str,
     developer: Developer = Depends(authenticate_client),
     db: Session = Depends(get_db),
@@ -173,13 +158,7 @@ def pay_recharge_order(
     )
     if order is None:
         raise HTTPException(status_code=404, detail="order not found")
-    if order.status == "paid":
-        raise HTTPException(status_code=400, detail="order already paid")
-    order.status = "paid"
-    order.paid_at = datetime.utcnow()
-    developer.balance += order.amount
-    db.commit()
-    return RechargePayResponse(order_no=order.order_no, status="paid", balance=developer.balance)
+    return order
 
 
 @router.get("/client/recharge/orders", response_model=list[RechargeOrderOut])
