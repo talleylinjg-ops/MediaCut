@@ -176,6 +176,7 @@
 
 # Media edit platform
 backend/media.db*
+backend/test_media.db*
 backend/storage/
 frontend/dist/
 frontend/node_modules/

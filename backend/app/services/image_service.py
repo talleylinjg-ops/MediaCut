@@ -77,6 +77,11 @@ def apply_watermark(img: Image.Image, text: str, position, size: int, color) -> 
     except OSError:
         font = ImageFont.load_default()
     x, y = position
+    if isinstance(position, str) and position == "center":
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        x = (img.width - tw) / 2 - bbox[0]
+        y = (img.height - th) / 2 - bbox[1]
     draw.text((int(x), int(y)), text, fill=tuple(color), font=font)
     return Image.alpha_composite(img.convert("RGBA"), overlay.convert("RGBA")).convert(img.mode)
 

@@ -139,6 +139,11 @@ class ClientPasswordChange(BaseModel):
     new_password: str
 
 
+class ClientProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+
+
 class KeyInfoOut(BaseModel):
     id: int
     name: str

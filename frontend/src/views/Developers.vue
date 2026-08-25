@@ -59,6 +59,18 @@ const active = ref(route.path)
 const developers = ref([])
 const loading = ref(false)
 
+async function load() {
+  loading.value = true
+  try {
+    const { data } = await http.get('/admin/developers')
+    developers.value = data
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 async function copyKey(row) {
   const key = row.api_key
   if (!key) return ElMessage.warning('该开发者暂无明文 KEY')

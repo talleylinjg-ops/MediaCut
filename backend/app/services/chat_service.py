@@ -16,7 +16,8 @@ SYSTEM_PROMPT = (
     "只输出一个 JSON 对象，不要输出任何其他文字。JSON 结构："
     '{"action":"image_edit|audio_edit|matting|enhance|asr|tts|reply","params":{},"reply":"给用户的简短中文回复"}。'
     "图片输入时 action 可选 image_edit/matting/enhance，"
-    "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss)、resize(width)、watermark(text,size)、crop、output_format(png/jpeg/webp)。"
+    "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
+    "watermark.position 可为 'center' 或 [x,y] 坐标。"
     "音频输入时 action 可选 audio_edit/asr，"
     "音频编辑 params 支持 crop(start,end)、volume(gain)、output_format(mp3/wav/aac)。"
     "只有文字时可用 reply 直接回答，或用 tts 将文字转为语音。"
@@ -85,8 +86,19 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
         if m:
             ratio = 2.0 if m.group(1) == "放大" else 0.5
             params.setdefault("resize", {"width": 0, "height": 0})
-        if "水印" in t:
-            params.setdefault("watermark", {"text": "MediaCut", "size": 36})
+        if re.search(r"logo|水印|加字|加文字|打上|加上", t, re.IGNORECASE):
+            wm_text = None
+            lm = re.search(r"logo\s*([A-Za-z0-9]+)", t, re.IGNORECASE)
+            if lm:
+                wm_text = lm.group(1)
+            else:
+                m = re.search(r"(?:水印|加字|加文字)\s*[:：]?\s*([A-Za-z0-9\u4e00-\u9fff]+)", t)
+                if m:
+                    wm_text = m.group(1)
+            wm = {"text": wm_text or "MediaCut", "size": 36}
+            if "中间" in t or "居中" in t:
+                wm["position"] = "center"
+            params.setdefault("watermark", wm)
         for fmt in ("png", "jpeg", "webp"):
             if f"转{fmt}" in t or fmt in t:
                 params.setdefault("output_format", fmt)

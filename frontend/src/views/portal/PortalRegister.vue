@@ -18,8 +18,16 @@
             <el-button type="primary" :loading="loading" @click="submit">注册</el-button>
           </el-form-item>
         </el-form>
-        <el-alert v-if="apiKey" type="success" :closable="false">
-          <p>{{ isExisting ? '您已申请过 API Key' : '申请成功！请妥善保存您的 API Key：' }}</p>
+        <el-alert v-if="apiKey && isExisting" type="info" :closable="false" show-icon style="margin-bottom: 16px">
+          <p>您已申请过 API Key（保存在浏览器中）：<code>{{ apiKey }}</code></p>
+          <div style="margin-top: 8px">
+            <el-button size="small" type="primary" @click="copyKey">复制 Key</el-button>
+            <el-button size="small" @click="goPlayground">在线试用</el-button>
+            <el-button size="small" @click="reapply">清除并重新申请</el-button>
+          </div>
+        </el-alert>
+        <el-alert v-if="apiKey && !isExisting" type="success" :closable="false">
+          <p>申请成功！请妥善保存您的 API Key：</p>
           <p>
             <code style="word-break: break-all">{{ apiKey }}</code>
             <el-button size="small" type="primary" style="margin-left: 8px" @click="copyKey">复制</el-button>

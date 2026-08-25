@@ -6,6 +6,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center">
           <h2 style="margin: 0">控制台</h2>
           <div>
+            <el-button @click="openProfile" style="margin-right: 8px">修改资料</el-button>
             <el-button @click="pwdDialog = true" style="margin-right: 8px">修改密码</el-button>
             <el-button type="danger" plain @click="logout">退出登录</el-button>
           </div>
@@ -139,6 +140,21 @@
         <el-button type="primary" :loading="pwdLoading" @click="changePassword">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="profileDialog" title="修改资料" width="420px">
+      <el-form label-width="70px" @submit.prevent>
+        <el-form-item label="名称">
+          <el-input v-model="profileForm.name" />
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="profileForm.email" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="profileDialog = false">取消</el-button>
+        <el-button type="primary" :loading="profileLoading" @click="saveProfile">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -166,6 +182,9 @@ const qrCanvas = ref(null)
 const pwdDialog = ref(false)
 const pwdForm = ref({ current: '', next: '' })
 const pwdLoading = ref(false)
+const profileDialog = ref(false)
+const profileForm = ref({ name: '', email: '' })
+const profileLoading = ref(false)
 const payStatus = ref({ alipay: false, wechat: false })
 const payReady = computed(() => Boolean(payStatus.value[payMethod.value]))
 let pollTimer = null
@@ -276,6 +295,31 @@ async function changePassword() {
     ElMessage.error(e.response?.data?.detail || '修改失败')
   } finally {
     pwdLoading.value = false
+  }
+}
+
+function openProfile() {
+  profileForm.value = { name: me.value.name || '', email: me.value.email || '' }
+  profileDialog.value = true
+}
+
+async function saveProfile() {
+  if (!profileForm.value.name.trim() || !profileForm.value.email.trim()) {
+    return ElMessage.warning('名称与邮箱不能为空')
+  }
+  profileLoading.value = true
+  try {
+    const { data } = await http.put('/dev/client/profile', {
+      name: profileForm.value.name.trim(),
+      email: profileForm.value.email.trim()
+    })
+    me.value = data
+    profileDialog.value = false
+    ElMessage.success('资料已更新')
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '保存失败')
+  } finally {
+    profileLoading.value = false
   }
 }
 

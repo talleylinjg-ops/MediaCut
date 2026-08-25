@@ -24,6 +24,7 @@ const routes = [
   { path: '/docs', component: PortalDocs },
   { path: '/swagger', component: SwaggerDoc },
   { path: '/playground', component: ApiPlayground },
+  { path: '/client/try', component: ApiPlayground },
   { path: '/client/login', component: ClientLogin },
   { path: '/client/console', component: ClientConsole, meta: { requiresClient: true } },
   { path: '/login', component: Login },

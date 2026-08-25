@@ -21,6 +21,7 @@ from app.schemas import (
     ClientLogin,
     ClientOut,
     ClientPasswordChange,
+    ClientProfileUpdate,
     ClientToken,
     DeveloperRegister,
     KeyInfoOut,
@@ -84,6 +85,30 @@ def client_change_password(
     developer.password_hash = hash_password(payload.new_password)
     db.commit()
     return {"ok": True}
+
+
+@router.put("/client/profile", response_model=ClientOut)
+def client_update_profile(
+    payload: ClientProfileUpdate,
+    developer: Developer = Depends(authenticate_client),
+    db: Session = Depends(get_db),
+):
+    if payload.email is not None:
+        email = payload.email.strip()
+        if not email:
+            raise HTTPException(status_code=400, detail="email cannot be empty")
+        exists = db.query(Developer).filter(Developer.email == email).first()
+        if exists and exists.id != developer.id:
+            raise HTTPException(status_code=400, detail="该邮箱已被其他账号使用")
+        developer.email = email
+    if payload.name is not None:
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="name cannot be empty")
+        developer.name = name
+    db.commit()
+    db.refresh(developer)
+    return developer
 
 
 @router.post("/client/login", response_model=ClientToken)
