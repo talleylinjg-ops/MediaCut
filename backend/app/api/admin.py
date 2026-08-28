@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from app.config import ADMIN_USERNAME, MODELSCOPE_MODELS
+from app.config import MODELSCOPE_MODELS
 from app.core import settings
 from app.core.security import (
     admin_password_matches,
@@ -38,7 +38,8 @@ router = APIRouter(prefix="/api/v1/admin", tags=["管理后台"])
 
 @router.post("/login", response_model=AdminToken)
 def login(payload: AdminLogin):
-    if payload.username != ADMIN_USERNAME or not admin_password_matches(payload.password):
+    admin_username = settings.get_admin_username() or "admin"
+    if payload.username != admin_username or not admin_password_matches(payload.password):
         raise HTTPException(status_code=401, detail="invalid credentials")
     return AdminToken(token=create_admin_token())
 
@@ -56,13 +57,18 @@ def change_password(payload: AdminPasswordChange):
 @router.get("/profile", dependencies=[Depends(require_admin)])
 def get_admin_profile():
     return {
-        "username": ADMIN_USERNAME,
-        "name": settings.get_admin_display_name() or ADMIN_USERNAME,
+        "username": settings.get_admin_username() or "admin",
+        "name": settings.get_admin_display_name() or "管理员",
     }
 
 
 @router.put("/profile", dependencies=[Depends(require_admin)])
 def update_admin_profile(payload: AdminProfileUpdate):
+    if payload.username is not None:
+        username = payload.username.strip()
+        if not username:
+            raise HTTPException(status_code=400, detail="username cannot be empty")
+        settings.set_admin_username(username)
     if payload.name is not None:
         name = payload.name.strip()
         if not name:
@@ -74,7 +80,7 @@ def update_admin_profile(payload: AdminProfileUpdate):
 @router.get("/config", response_model=ConfigOut, dependencies=[Depends(require_admin)])
 def get_config():
     return ConfigOut(
-        admin_username=ADMIN_USERNAME,
+        admin_username=settings.get_admin_username() or "admin",
         modelscope_configured=bool(settings.get_modelscope_token()),
         models=MODELSCOPE_MODELS,
         alipay_configured=bool(settings.get_pay_config("pay_alipay_appid")),

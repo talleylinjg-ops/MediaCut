@@ -4,6 +4,7 @@ from app.database import SessionLocal
 
 ADMIN_PASSWORD_KEY = "admin_password_hash"
 ADMIN_NAME_KEY = "admin_display_name"
+ADMIN_USERNAME_KEY = "admin_username"
 MODELSCOPE_TOKEN_KEY = "modelscope_api_token"
 
 PAY_CONFIG_KEYS = {
@@ -65,6 +66,14 @@ def get_admin_display_name() -> str:
 
 def set_admin_display_name(value: str) -> None:
     _set_config(ADMIN_NAME_KEY, value)
+
+
+def get_admin_username() -> str:
+    return _get_config(ADMIN_USERNAME_KEY)
+
+
+def set_admin_username(value: str) -> None:
+    _set_config(ADMIN_USERNAME_KEY, value)
 
 
 def set_modelscope_token(value: str) -> None:

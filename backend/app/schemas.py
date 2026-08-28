@@ -74,6 +74,7 @@ class AdminPasswordChange(BaseModel):
 
 
 class AdminProfileUpdate(BaseModel):
+    username: Optional[str] = None
     name: Optional[str] = None
 
 
@@ -162,6 +163,7 @@ class ClientOut(BaseModel):
     id: int
     name: str
     email: str
+    api_key: Optional[str] = None
     billing_type: str
     balance: int
     quota_limit: int
