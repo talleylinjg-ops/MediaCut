@@ -143,6 +143,7 @@
                 <div v-if="m.attachments" style="font-size: 12px; color: #909399; margin-top: 4px">{{ m.attachments }}</div>
                 <img v-if="m.kind === 'image' && m.url" :src="m.url" style="max-width: 260px; margin-top: 8px; border: 1px solid #e4e7ed" />
                 <audio v-if="m.kind === 'audio' && m.url" :src="m.url" controls style="width: 100%; margin-top: 8px" />
+                <video v-if="m.kind === 'video' && m.url" :src="m.url" controls style="max-width: 400px; width: 100%; margin-top: 8px; border: 1px solid #e4e7ed" />
               </div>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center">
@@ -152,12 +153,13 @@
                 style="flex: 1; min-width: 220px"
                 @keyup.enter="sendChat"
               />
-              <el-button plain @click="pickVoice">语音</el-button>
+              <el-button plain :type="isRecording ? 'danger' : ''" @click="toggleRecord">
+                {{ isRecording ? '录音中，点击停止' : '语音' }}
+              </el-button>
               <el-button plain @click="pickImage">图片</el-button>
               <el-button plain @click="pickMedia">文件</el-button>
               <el-button type="primary" :loading="chatLoading" @click="sendChat">发送</el-button>
             </div>
-            <input ref="voiceInput" type="file" accept="audio/*" style="display: none" @change="onVoice" />
             <input ref="imageInput" type="file" accept="image/*" style="display: none" @change="onImage" />
             <input ref="mediaInput" type="file" accept="audio/*,image/*" style="display: none" @change="onMedia" />
           </el-tab-pane>
@@ -173,7 +175,7 @@ import { ElMessage } from 'element-plus'
 import http from '../../api'
 import PortalNav from '../../components/PortalNav.vue'
 
-const apiKey = ref(localStorage.getItem('api_key') || '')
+const apiKey = ref(sessionStorage.getItem('api_key') || '')
 const tab = ref('image')
 const running = ref(false)
 const savingKey = ref(false)
@@ -194,14 +196,17 @@ const chatText = ref('')
 const chatLoading = ref(false)
 const chatBox = ref(null)
 const messages = ref([])
-const voiceInput = ref(null)
 const imageInput = ref(null)
 const mediaInput = ref(null)
 const attach = ref(null)
+const isRecording = ref(false)
+let recorder = null
+let recStream = null
+let recChunks = []
 const attachMeta = computed(() => (attach.value ? `导入文件：${attach.value.file.name}` : ''))
 
 onMounted(async () => {
-  const k = localStorage.getItem('api_key')
+  const k = sessionStorage.getItem('api_key')
   if (k) {
     apiKey.value = k
     await validateKey(true)
@@ -235,7 +240,7 @@ async function saveKey() {
   savingKey.value = true
   try {
     const { data } = await http.get('/dev/key/info', { headers: { Authorization: `Bearer ${k}` } })
-    localStorage.setItem('api_key', k)
+    sessionStorage.setItem('api_key', k)
     keyInfo.value = data
     keyInfoError.value = ''
     ElMessage.success(`API Key 已保存并校验通过（${data.name}，余额 ${data.balance} 点）`)
@@ -313,19 +318,47 @@ async function runAudio() {
   }
 }
 
-function pickVoice() {
-  voiceInput.value.click()
+async function toggleRecord() {
+  if (isRecording.value) {
+    recorder?.stop()
+    return
+  }
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const mr = new MediaRecorder(recStream)
+    recorder = mr
+    recChunks = []
+    mr.ondataavailable = (e) => {
+      if (e.data && e.data.size) recChunks.push(e.data)
+    }
+    mr.onstop = () => {
+      recStream.getTracks().forEach((t) => t.stop())
+      const blob = new Blob(recChunks, { type: mr.mimeType || 'audio/webm' })
+      if (blob.size) {
+        attach.value = { type: 'voice', file: new File([blob], 'recording.webm', { type: blob.type }) }
+        ElMessage.success('录音完成，可作为语音输入发送')
+      } else {
+        ElMessage.warning('录音为空，请重试')
+      }
+      isRecording.value = false
+      recorder = null
+    }
+    mr.onerror = () => {
+      isRecording.value = false
+    }
+    mr.start()
+    isRecording.value = true
+    ElMessage.info('开始录音，点击"停止"结束')
+  } catch (e) {
+    ElMessage.error('无法访问麦克风：' + (e.message || '请检查浏览器权限'))
+  }
 }
+
 function pickImage() {
   imageInput.value.click()
 }
 function pickMedia() {
   mediaInput.value.click()
-}
-function onVoice(e) {
-  const f = e.target.files[0]
-  if (f) attach.value = { type: 'voice', file: f }
-  e.target.value = ''
 }
 function onImage(e) {
   const f = e.target.files[0]

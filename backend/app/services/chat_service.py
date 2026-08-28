@@ -6,7 +6,7 @@ import uuid
 import httpx
 
 from app.core.settings import get_modelscope_token
-from app.services import ai_service, audio_service, image_service
+from app.services import ai_service, audio_service, image_service, video_service
 
 MODELSCOPE_CHAT_URL = "https://api.modelscope.cn/v1/chat/completions"
 CHAT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
@@ -14,10 +14,11 @@ CHAT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 SYSTEM_PROMPT = (
     "你是媒体剪辑助手，根据用户请求和输入媒体类型决定执行动作。"
     "只输出一个 JSON 对象，不要输出任何其他文字。JSON 结构："
-    '{"action":"image_edit|audio_edit|matting|enhance|asr|tts|reply","params":{},"reply":"给用户的简短中文回复"}。'
-    "图片输入时 action 可选 image_edit/matting/enhance，"
+    '{"action":"image_edit|audio_edit|matting|enhance|asr|tts|image_to_video|reply","params":{},"reply":"给用户的简短中文回复"}。'
+    "图片输入时 action 可选 image_edit/matting/enhance/image_to_video，"
     "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
     "watermark.position 可为 'center' 或 [x,y] 坐标。"
+    "image_to_video params 支持 duration(秒)，将图片生成为指定时长的视频。"
     "音频输入时 action 可选 audio_edit/asr，"
     "音频编辑 params 支持 crop(start,end)、volume(gain)、output_format(mp3/wav/aac)。"
     "只有文字时可用 reply 直接回答，或用 tts 将文字转为语音。"
@@ -61,7 +62,7 @@ def parse_with_llm(text: str, media_kind: str) -> dict | None:
     except json.JSONDecodeError:
         return None
     action = intent.get("action")
-    if action not in ("image_edit", "audio_edit", "matting", "enhance", "asr", "tts", "reply"):
+    if action not in ("image_edit", "audio_edit", "matting", "enhance", "asr", "tts", "image_to_video", "reply"):
         return None
     params = intent.get("params") or {}
     return {"action": action, "params": params, "reply": intent.get("reply", "")}
@@ -71,6 +72,14 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
     t = text.strip()
     reply = ""
     if media_kind == "image":
+        if re.search(r"视频|动画|动图", t):
+            m = re.search(r"(\d+)\s*秒", t)
+            duration = int(m.group(1)) if m else 5
+            return {
+                "action": "image_to_video",
+                "params": {"duration": duration},
+                "reply": f"正在将图片生成为 {duration} 秒视频",
+            }
         params = {}
         if re.search(r"灰度|黑白", t):
             params["filter"] = "gray"
@@ -176,6 +185,15 @@ def run_chat(params: dict, task_dir: str) -> dict:
         tts_text = iparams.get("text") or text or combined
         filename = ai_service.run_tts(tts_text, task_dir)
         return {"kind": "audio", "text": reply or "已合成语音", "filename": filename}
+
+    if action == "image_to_video":
+        if not media_path or not os.path.exists(media_path):
+            return {"kind": "text", "text": "需要上传图片才能生成视频。", "filename": None}
+        if media_kind != "image":
+            return {"kind": "text", "text": "视频生成需要图片输入。", "filename": None}
+        duration = int(iparams.get("duration") or 5)
+        filename = video_service.image_to_video(media_path, duration, task_dir)
+        return {"kind": "video", "text": reply or "视频已生成", "filename": filename}
 
     if action == "asr":
         if not media_path or not os.path.exists(media_path):

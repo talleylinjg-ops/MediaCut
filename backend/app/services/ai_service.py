@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import uuid
 
 from fastapi import HTTPException
@@ -10,6 +11,17 @@ from app.core.settings import get_modelscope_token
 _pipelines = {}
 
 TASK_TYPES = {"matting", "enhance", "asr", "tts"}
+
+
+def _ensure_wav(input_path: str, output_dir: str) -> str:
+    if input_path.lower().endswith((".wav", ".mp3", ".flac", ".m4a")):
+        return input_path
+    wav_path = os.path.join(output_dir, f"asr_{uuid.uuid4().hex}.wav")
+    cmd = ["ffmpeg", "-y", "-i", input_path, "-ar", "16000", "-ac", "1", wav_path]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    if proc.returncode != 0:
+        raise HTTPException(status_code=400, detail="unable to decode audio for ASR")
+    return wav_path
 
 
 def _get_pipeline(task_type: str):
@@ -49,8 +61,9 @@ def run_enhance(input_path: str, output_dir: str) -> str:
 
 
 def run_asr(input_path: str, output_dir: str) -> dict:
+    wav_path = _ensure_wav(input_path, output_dir)
     pipe = _get_pipeline("asr")
-    result = pipe(input_path)
+    result = pipe(wav_path)
     text = result.get("text") if isinstance(result, dict) else str(result)
     filename = f"result_{uuid.uuid4().hex}.txt"
     with open(os.path.join(output_dir, filename), "w", encoding="utf-8") as f:

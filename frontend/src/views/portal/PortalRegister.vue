@@ -18,22 +18,13 @@
             <el-button type="primary" :loading="loading" @click="submit">注册</el-button>
           </el-form-item>
         </el-form>
-        <el-alert v-if="apiKey && isExisting" type="info" :closable="false" show-icon style="margin-bottom: 16px">
-          <p>您已申请过 API Key（保存在浏览器中）：<code>{{ apiKey }}</code></p>
-          <div style="margin-top: 8px">
-            <el-button size="small" type="primary" @click="copyKey">复制 Key</el-button>
-            <el-button size="small" @click="goPlayground">在线试用</el-button>
-            <el-button size="small" @click="reapply">清除并重新申请</el-button>
-          </div>
-        </el-alert>
-        <el-alert v-if="apiKey && !isExisting" type="success" :closable="false">
-          <p>申请成功！请妥善保存您的 API Key：</p>
+        <el-alert v-if="apiKey" type="success" :closable="false">
+          <p>申请成功！请妥善保存您的 API Key（仅此一次展示，请立即复制）：</p>
           <p>
             <code style="word-break: break-all">{{ apiKey }}</code>
             <el-button size="small" type="primary" style="margin-left: 8px" @click="copyKey">复制</el-button>
           </p>
           <el-button type="primary" style="margin-top: 8px" @click="goPlayground">在线试用</el-button>
-          <el-button style="margin-top: 8px" @click="reapply">重新申请</el-button>
         </el-alert>
       </el-card>
     </div>
@@ -41,7 +32,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api'
@@ -51,34 +42,17 @@ const router = useRouter()
 const form = reactive({ name: '', email: '', password: '' })
 const loading = ref(false)
 const apiKey = ref('')
-const isExisting = ref(false)
-
-onMounted(() => {
-  const saved = localStorage.getItem('api_key')
-  if (saved) {
-    apiKey.value = saved
-    isExisting.value = true
-  }
-})
 
 async function submit() {
   loading.value = true
   try {
     const { data } = await http.post('/dev/register', form)
     apiKey.value = data.api_key
-    isExisting.value = false
-    localStorage.setItem('api_key', data.api_key)
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '注册失败')
   } finally {
     loading.value = false
   }
-}
-
-function reapply() {
-  localStorage.removeItem('api_key')
-  apiKey.value = ''
-  isExisting.value = false
 }
 
 function goPlayground() {

@@ -274,8 +274,7 @@ async function resetKey() {
   await ElMessageBox.confirm('重置后旧 Key 立即失效，确定继续？', '重置 API Key', { type: 'warning' })
   const { data } = await http.post('/dev/client/reset-key')
   newKey.value = data.api_key
-  localStorage.setItem('api_key', data.api_key)
-  ElMessage.success('Key 已重置')
+  ElMessage.success('Key 已重置，请立即复制保存')
 }
 
 async function changePassword() {
@@ -325,6 +324,8 @@ async function saveProfile() {
 
 function logout() {
   localStorage.removeItem('client_token')
+  localStorage.removeItem('api_key')
+  sessionStorage.removeItem('api_key')
   router.push('/client/login')
 }
 

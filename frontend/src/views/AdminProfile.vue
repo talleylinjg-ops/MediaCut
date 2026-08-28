@@ -12,6 +12,21 @@
       <h3>账号中心</h3>
 
       <el-card style="max-width: 560px">
+        <template #header><b>修改管理员资料</b></template>
+        <el-form :model="profile" label-width="110px" @submit.prevent>
+          <el-form-item label="用户名">
+            <el-input :model-value="cfg.admin_username" disabled />
+          </el-form-item>
+          <el-form-item label="名称">
+            <el-input v-model="profile.name" placeholder="管理员显示名称" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+
+      <el-card style="max-width: 560px; margin-top: 20px">
         <template #header><b>修改管理员密码</b></template>
         <el-form :model="pwd" label-width="110px" @submit.prevent>
           <el-form-item label="当前密码">
@@ -144,6 +159,25 @@ const configured = ref(false)
 const tokenInput = ref('')
 const savingToken = ref(false)
 
+const profile = reactive({ name: '' })
+const savingProfile = ref(false)
+
+async function saveProfile() {
+  if (!profile.name.trim()) {
+    ElMessage.warning('名称不能为空')
+    return
+  }
+  savingProfile.value = true
+  try {
+    await http.put('/admin/profile', { name: profile.name.trim() })
+    ElMessage.success('管理员资料已更新')
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '保存失败')
+  } finally {
+    savingProfile.value = false
+  }
+}
+
 const pay = reactive({
   alipay_appid: '',
   alipay_private_key: '',
@@ -184,9 +218,13 @@ async function changePassword() {
 
 async function loadConfig() {
   try {
-    const { data } = await http.get('/admin/config')
-    Object.assign(cfg, data)
-    configured.value = data.modelscope_configured
+    const [cfgResp, profileResp] = await Promise.all([
+      http.get('/admin/config'),
+      http.get('/admin/profile')
+    ])
+    Object.assign(cfg, cfgResp.data)
+    configured.value = cfgResp.data.modelscope_configured
+    profile.name = profileResp.data.name || cfgResp.data.admin_username
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '加载配置失败')
   }

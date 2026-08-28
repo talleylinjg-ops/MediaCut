@@ -3,6 +3,7 @@ from app.config import MODELSCOPE_API_TOKEN as ENV_MODELSCOPE_TOKEN
 from app.database import SessionLocal
 
 ADMIN_PASSWORD_KEY = "admin_password_hash"
+ADMIN_NAME_KEY = "admin_display_name"
 MODELSCOPE_TOKEN_KEY = "modelscope_api_token"
 
 PAY_CONFIG_KEYS = {
@@ -56,6 +57,14 @@ def get_admin_password_hash() -> str:
 
 def set_admin_password_hash(value: str) -> None:
     _set_config(ADMIN_PASSWORD_KEY, value)
+
+
+def get_admin_display_name() -> str:
+    return _get_config(ADMIN_NAME_KEY)
+
+
+def set_admin_display_name(value: str) -> None:
+    _set_config(ADMIN_NAME_KEY, value)
 
 
 def set_modelscope_token(value: str) -> None:

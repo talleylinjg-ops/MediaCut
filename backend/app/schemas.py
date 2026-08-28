@@ -73,6 +73,10 @@ class AdminPasswordChange(BaseModel):
     new_password: str
 
 
+class AdminProfileUpdate(BaseModel):
+    name: Optional[str] = None
+
+
 class ConfigOut(BaseModel):
     admin_username: str
     modelscope_configured: bool
@@ -174,6 +178,15 @@ class LogOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AdminLogOut(BaseModel):
+    developer_id: int
+    developer_name: str
+    endpoint: str
+    status_code: int
+    cost: int
+    created_at: datetime
 
 
 class StatOut(BaseModel):

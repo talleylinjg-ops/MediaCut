@@ -15,16 +15,20 @@ from app.core.security import (
     require_admin,
 )
 from app.database import get_db
-from app.models import ApiCallLog, Developer, Task
+from app.models import ApiCallLog, Developer, RechargeOrder, Task
 from app.schemas import (
     AdminLogin,
+    AdminLogOut,
     AdminPasswordChange,
+    AdminProfileUpdate,
     AdminToken,
     ConfigOut,
     ConfigUpdate,
     DashboardOut,
     DeveloperOut,
     DeveloperUpdate,
+    LogOut,
+    RechargeOrderOut,
     StatOut,
 )
 from app.services import payment_service
@@ -46,6 +50,24 @@ def change_password(payload: AdminPasswordChange):
     if not payload.new_password or len(payload.new_password) < 6:
         raise HTTPException(status_code=400, detail="new password must be at least 6 characters")
     settings.set_admin_password_hash(hash_password(payload.new_password))
+    return {"ok": True}
+
+
+@router.get("/profile", dependencies=[Depends(require_admin)])
+def get_admin_profile():
+    return {
+        "username": ADMIN_USERNAME,
+        "name": settings.get_admin_display_name() or ADMIN_USERNAME,
+    }
+
+
+@router.put("/profile", dependencies=[Depends(require_admin)])
+def update_admin_profile(payload: AdminProfileUpdate):
+    if payload.name is not None:
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="name cannot be empty")
+        settings.set_admin_display_name(name)
     return {"ok": True}
 
 
@@ -114,6 +136,66 @@ def admin_reset_key(developer_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(developer)
     return developer
+
+
+@router.get("/developers/{developer_id}/logs", response_model=list[AdminLogOut], dependencies=[Depends(require_admin)])
+def get_developer_logs(developer_id: int, db: Session = Depends(get_db)):
+    if db.get(Developer, developer_id) is None:
+        raise HTTPException(status_code=404, detail="developer not found")
+    rows = (
+        db.query(ApiCallLog, Developer.name)
+        .join(Developer, Developer.id == ApiCallLog.developer_id)
+        .filter(ApiCallLog.developer_id == developer_id)
+        .order_by(ApiCallLog.id.desc())
+        .limit(300)
+        .all()
+    )
+    return [
+        AdminLogOut(
+            developer_id=log.developer_id,
+            developer_name=name,
+            endpoint=log.endpoint,
+            status_code=log.status_code,
+            cost=log.cost,
+            created_at=log.created_at,
+        )
+        for log, name in rows
+    ]
+
+
+@router.get("/developers/{developer_id}/orders", response_model=list[RechargeOrderOut], dependencies=[Depends(require_admin)])
+def get_developer_orders(developer_id: int, db: Session = Depends(get_db)):
+    if db.get(Developer, developer_id) is None:
+        raise HTTPException(status_code=404, detail="developer not found")
+    return (
+        db.query(RechargeOrder)
+        .filter(RechargeOrder.developer_id == developer_id)
+        .order_by(RechargeOrder.id.desc())
+        .limit(100)
+        .all()
+    )
+
+
+@router.get("/logs", response_model=list[AdminLogOut], dependencies=[Depends(require_admin)])
+def get_all_logs(db: Session = Depends(get_db)):
+    rows = (
+        db.query(ApiCallLog, Developer.name)
+        .join(Developer, Developer.id == ApiCallLog.developer_id)
+        .order_by(ApiCallLog.id.desc())
+        .limit(300)
+        .all()
+    )
+    return [
+        AdminLogOut(
+            developer_id=log.developer_id,
+            developer_name=name,
+            endpoint=log.endpoint,
+            status_code=log.status_code,
+            cost=log.cost,
+            created_at=log.created_at,
+        )
+        for log, name in rows
+    ]
 
 
 @router.get("/dashboard", response_model=DashboardOut, dependencies=[Depends(require_admin)])

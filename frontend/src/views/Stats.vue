@@ -17,6 +17,22 @@
         <el-table-column prop="failed" label="失败" />
         <el-table-column prop="revenue" label="收入(点)" />
       </el-table>
+
+      <h3 style="margin-top: 28px">调用明细</h3>
+      <el-table :data="logs" v-loading="logsLoading" size="small">
+        <el-table-column prop="developer_name" label="会员" width="160" />
+        <el-table-column prop="developer_id" label="ID" width="60" />
+        <el-table-column prop="endpoint" label="接口" />
+        <el-table-column label="状态码" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.status_code < 400 ? 'success' : 'danger'">{{ row.status_code }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="cost" label="费用(点)" width="90" />
+        <el-table-column prop="created_at" label="使用时间" width="200">
+          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+        </el-table-column>
+      </el-table>
     </el-main>
   </el-container>
 </template>
@@ -31,6 +47,8 @@ const route = useRoute()
 const active = ref(route.path)
 const stats = ref([])
 const loading = ref(false)
+const logs = ref([])
+const logsLoading = ref(false)
 
 async function load() {
   loading.value = true
@@ -44,5 +62,24 @@ async function load() {
   }
 }
 
-onMounted(load)
+async function loadLogs() {
+  logsLoading.value = true
+  try {
+    const { data } = await http.get('/admin/logs')
+    logs.value = data
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '加载明细失败')
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+function formatTime(t) {
+  return t ? t.replace('T', ' ').slice(0, 19) : ''
+}
+
+onMounted(() => {
+  load()
+  loadLogs()
+})
 </script>

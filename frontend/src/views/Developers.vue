@@ -34,16 +34,65 @@
           </template>
         </el-table-column>
         <el-table-column prop="balance" label="余额(点)" width="90" />
-        <el-table-column label="操作" width="260">
+        <el-table-column label="操作" width="180">
           <template #default="{ row }">
             <el-button size="small" type="primary" plain @click="copyKey(row)">复制 KEY</el-button>
             <el-button size="small" @click="toggleStatus(row)">
               {{ row.status === 'active' ? '停用' : '启用' }}
             </el-button>
-            <el-button size="small" type="warning" @click="recharge(row)">充值</el-button>
+            <el-button size="small" type="warning" plain @click="viewDetail(row)">查看</el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <el-dialog v-model="detailDialog" :title="detail ? `${detail.name}（${detail.email}）的详细记录` : '查看'" width="880px">
+        <div v-loading="detailLoading">
+          <el-descriptions :column="4" size="small" style="margin-bottom: 12px">
+            <el-descriptions-item label="余额">{{ detail?.balance }} 点</el-descriptions-item>
+            <el-descriptions-item label="计费类型">{{ detail?.billing_type === 'internal' ? '内部免费' : '对外计费' }}</el-descriptions-item>
+            <el-descriptions-item label="状态">{{ detail?.status }}</el-descriptions-item>
+            <el-descriptions-item label="API Key">
+              <code style="word-break: break-all">{{ detail?.api_key || '（无）' }}</code>
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <h4 style="margin: 8px 0">充值记录</h4>
+          <el-table :data="detailOrders" size="small" style="margin-bottom: 16px">
+            <el-table-column prop="order_no" label="订单号" width="180" />
+            <el-table-column label="金额" width="100">
+              <template #default="{ row }">{{ (row.amount_cents / 100).toFixed(2) }} 元</template>
+            </el-table-column>
+            <el-table-column prop="points" label="到账点数" width="90" />
+            <el-table-column label="方式" width="90">
+              <template #default="{ row }">{{ row.payment_provider === 'alipay' ? '支付宝' : '微信' }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'paid' ? 'success' : 'warning'">{{ row.status === 'paid' ? '已支付' : '待支付' }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="created_at" label="时间">
+              <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="detailOrders.length === 0" description="暂无充值记录" :image-size="60" />
+
+          <h4 style="margin: 8px 0">使用记录</h4>
+          <el-table :data="detailLogs" size="small">
+            <el-table-column prop="endpoint" label="接口" />
+            <el-table-column label="状态码" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.status_code < 400 ? 'success' : 'danger'">{{ row.status_code }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="cost" label="费用(点)" width="90" />
+            <el-table-column prop="created_at" label="时间" width="200">
+              <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="detailLogs.length === 0" description="暂无使用记录" :image-size="60" />
+        </div>
+      </el-dialog>
     </el-main>
   </el-container>
 </template>
@@ -51,13 +100,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import http from '../api'
 
 const route = useRoute()
 const active = ref(route.path)
 const developers = ref([])
 const loading = ref(false)
+const detailDialog = ref(false)
+const detail = ref(null)
+const detailLogs = ref([])
+const detailOrders = ref([])
+const detailLoading = ref(false)
 
 async function load() {
   loading.value = true
@@ -95,12 +149,28 @@ async function toggleStatus(row) {
   load()
 }
 
-async function recharge(row) {
-  const { value } = await ElMessageBox.prompt('输入充值金额（元，1 元 = 100 点）', `为 ${row.name} 充值`, {
-    inputValue: '10'
-  })
-  await http.put(`/admin/developers/${row.id}`, { recharge_yuan: Number(value) })
-  load()
+async function viewDetail(row) {
+  detail.value = row
+  detailLogs.value = []
+  detailOrders.value = []
+  detailDialog.value = true
+  detailLoading.value = true
+  try {
+    const [logsResp, ordersResp] = await Promise.all([
+      http.get(`/admin/developers/${row.id}/logs`),
+      http.get(`/admin/developers/${row.id}/orders`)
+    ])
+    detailLogs.value = logsResp.data
+    detailOrders.value = ordersResp.data
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '加载记录失败')
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function formatTime(t) {
+  return t ? t.replace('T', ' ').slice(0, 19) : ''
 }
 
 onMounted(load)
