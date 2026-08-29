@@ -23,15 +23,15 @@ def audio_edit(
     db: Session = Depends(get_db),
 ):
     price = billing.get_price("/api/v1/audio/edit")
+    source_ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    audio_service.validate_audio(file.content_type or "", file.size or 0, source_ext)
     quota.check_quota(db, developer, price)
-    audio_service.validate_audio(file.content_type or "", file.size or 0)
     data = file.file.read()
     try:
         parsed = json.loads(params) if params else {}
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="invalid params json")
 
-    source_ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     output_path, output_format = audio_service.process_audio(data, parsed, source_ext, RESULT_DIR)
     quota.consume_quota(db, developer, price)
 

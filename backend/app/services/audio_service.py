@@ -18,11 +18,27 @@ CODEC_MAP = {
 FFMPEG_TIMEOUT = 300
 
 
-def validate_audio(content_type: str, size: int) -> None:
+EXT_ALLOWED = {
+    "mp3",
+    "wav",
+    "ogg",
+    "flac",
+    "aac",
+    "m4a",
+    "webm",
+    "amr",
+    "mp4",
+}
+
+
+def validate_audio(content_type: str, size: int, source_ext: str = "") -> None:
     if size > AUDIO_MAX_SIZE:
         raise HTTPException(status_code=413, detail="file too large")
-    if content_type not in AUDIO_ALLOWED_FORMATS:
-        raise HTTPException(status_code=400, detail="invalid file format")
+    if content_type in AUDIO_ALLOWED_FORMATS:
+        return
+    if source_ext and source_ext.lower() in EXT_ALLOWED:
+        return
+    raise HTTPException(status_code=400, detail="invalid file format")
 
 
 def run_ffmpeg(args: list[str]) -> None:

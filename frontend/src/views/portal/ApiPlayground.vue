@@ -43,6 +43,14 @@
               <span v-if="imgFile" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ imgFile.name }}</span>
               <input ref="imgPicker" type="file" accept="image/*" style="display: none" @change="onImgPick" />
             </div>
+            <el-alert
+              v-if="!keyInfo"
+              type="warning"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 12px"
+              title="未保存有效 API Key：请先在顶部粘贴 API Key 并点【保存】，没有 Key 请点【申请】注册（新注册赠送 100 点）"
+            />
             <el-form label-width="90px" style="max-width: 520px">
               <el-form-item label="滤镜">
                 <el-select v-model="img.filter" style="width: 200px">
@@ -69,7 +77,7 @@
                 </el-select>
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" :loading="running" @click="runImage">开始剪辑</el-button>
+                <el-button type="primary" :disabled="!keyInfo" :loading="running" @click="runImage">开始剪辑</el-button>
               </el-form-item>
             </el-form>
             <div v-if="imgResult">
@@ -83,6 +91,14 @@
               <span v-if="audFile" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ audFile.name }}</span>
               <input ref="audPicker" type="file" accept="audio/*" style="display: none" @change="onAudPick" />
             </div>
+            <el-alert
+              v-if="!keyInfo"
+              type="warning"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 12px"
+              title="未保存有效 API Key：请先在顶部粘贴 API Key 并点【保存】，没有 Key 请点【申请】注册（新注册赠送 100 点）"
+            />
             <el-form label-width="90px" style="max-width: 520px">
               <el-form-item label="裁剪起点 (s)">
                 <el-input-number v-model="aud.start" :min="0" :step="0.5" />
@@ -102,7 +118,7 @@
                 </el-select>
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" :loading="running" @click="runAudio">开始剪辑</el-button>
+                <el-button type="primary" :disabled="!keyInfo" :loading="running" @click="runAudio">开始剪辑</el-button>
               </el-form-item>
             </el-form>
             <div v-if="audResult">
