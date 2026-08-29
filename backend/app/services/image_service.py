@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from app.config import IMAGE_ALLOWED_FORMATS, IMAGE_MAX_SIZE
 
-FILTERS = {"gray", "blur", "sharpen", "edge", "emboss"}
+FILTERS = {"gray", "blur", "sharpen", "edge", "emboss", "cinematic"}
 OUTPUT_FORMATS = {"png", "jpeg", "webp", "bmp"}
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 EXT_ALLOWED = {"png", "jpg", "jpeg", "webp", "bmp", "gif"}
@@ -56,6 +56,15 @@ def apply_filter(img: Image.Image, filter_type: str) -> Image.Image:
     if filter_type == "gray":
         out = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
         return Image.fromarray(out).convert("RGB")
+    if filter_type == "cinematic":
+        hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV)
+        hsv[:, :, 1] = np.clip(hsv[:, :, 1] * 1.15, 0, 255).astype(np.uint8)
+        hsv[:, :, 2] = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(hsv[:, :, 2])
+        out = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+        out = cv2.convertScaleAbs(out, alpha=1.12, beta=8)
+        out[:, :, 0] = np.clip(out[:, :, 0] * 1.06, 0, 255).astype(np.uint8)
+        out[:, :, 2] = np.clip(out[:, :, 2] * 0.92, 0, 255).astype(np.uint8)
+        return Image.fromarray(out)
     if filter_type == "edge":
         gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
         out = cv2.Canny(gray, 100, 200)

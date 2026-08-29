@@ -60,6 +60,7 @@
                   <el-option label="锐化" value="sharpen" />
                   <el-option label="边缘" value="edge" />
                   <el-option label="浮雕" value="emboss" />
+                  <el-option label="电影色调" value="cinematic" />
                 </el-select>
               </el-form-item>
               <el-form-item label="缩放宽度">
@@ -82,8 +83,9 @@
             </el-form>
             <div v-if="imgResult">
               <img :src="imgResult" style="max-width: 100%; max-height: 400px; border: 1px solid #e4e7ed" />
-              <div style="margin-top: 8px">
-                <el-link type="primary" :href="imgResult" download="edited-image.png">下载成品图</el-link>
+              <div style="margin-top: 8px; display: flex; gap: 8px">
+                <el-button size="small" @click="viewResult(imgResult)">查看</el-button>
+                <el-button size="small" type="primary" plain @click="downloadResult(imgResult, 'edited-image.png')">下载</el-button>
               </div>
             </div>
           </el-tab-pane>
@@ -126,8 +128,9 @@
             </el-form>
             <div v-if="audResult">
               <audio :src="audResult" controls style="width: 100%" />
-              <div style="margin-top: 8px">
-                <el-link type="primary" :href="audResult" download="edited-audio.wav">下载成品音频</el-link>
+              <div style="margin-top: 8px; display: flex; gap: 8px">
+                <el-button size="small" @click="viewResult(audResult)">查看</el-button>
+                <el-button size="small" type="primary" plain @click="downloadResult(audResult, 'edited-audio.wav')">下载</el-button>
               </div>
             </div>
           </el-tab-pane>
@@ -164,8 +167,9 @@
                 </div>
                 <div v-if="m.attachments" style="font-size: 12px; color: #909399; margin-top: 4px">{{ m.attachments }}</div>
                 <img v-if="m.kind === 'image' && m.url" :src="m.url" style="max-width: 260px; margin-top: 8px; border: 1px solid #e4e7ed" />
-                <div v-if="m.url && m.fname" style="margin-top: 8px">
-                  <el-link type="primary" :href="m.url" :download="m.fname">下载{{ m.kind === 'video' ? '视频' : m.kind === 'audio' ? '音频' : '图片' }}</el-link>
+                <div v-if="m.url && m.fname" style="margin-top: 8px; display: flex; gap: 8px">
+                  <el-button size="small" @click="viewResult(m.url)">查看</el-button>
+                  <el-button size="small" type="primary" plain @click="downloadResult(m.url, m.fname)">下载</el-button>
                 </div>
                 <audio v-if="m.kind === 'audio' && m.url" :src="m.url" controls style="width: 100%; margin-top: 8px" />
                 <video v-if="m.kind === 'video' && m.url" :src="m.url" controls style="max-width: 400px; width: 100%; margin-top: 8px; border: 1px solid #e4e7ed" />
@@ -288,6 +292,19 @@ function onAudPick(e) {
   const f = e.target.files[0]
   if (f) audFile.value = f
   e.target.value = ''
+}
+
+function viewResult(url) {
+  window.open(url, '_blank')
+}
+
+function downloadResult(url, name) {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
 }
 
 function buildParams() {

@@ -91,6 +91,8 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
             params["filter"] = "edge"
         elif "浮雕" in t:
             params["filter"] = "emboss"
+        elif re.search(r"大片|电影|原色|调色|色调|质感|滤镜", t):
+            params["filter"] = "cinematic"
         m = re.search(r"(放大|缩小)", t)
         if m:
             ratio = 2.0 if m.group(1) == "放大" else 0.5
