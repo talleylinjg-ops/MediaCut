@@ -1,15 +1,6 @@
 <template>
-  <el-container>
-    <el-aside width="200px">
-      <el-menu :default-active="active" router>
-        <el-menu-item index="/admin">首页</el-menu-item>
-        <el-menu-item index="/developers">开发者管理</el-menu-item>
-        <el-menu-item index="/stats">调用统计</el-menu-item>
-        <el-menu-item index="/account">账号中心</el-menu-item>
-      </el-menu>
-    </el-aside>
-    <el-main>
-      <h3>开发者管理</h3>
+  <AdminShell>
+    <h3>开发者管理</h3>
       <el-table :data="developers" v-loading="loading">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="name" label="名称" />
@@ -93,18 +84,15 @@
           <el-empty v-if="detailLogs.length === 0" description="暂无使用记录" :image-size="60" />
         </div>
       </el-dialog>
-    </el-main>
-  </el-container>
+  </AdminShell>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api'
+import AdminShell from '../components/AdminShell.vue'
 
-const route = useRoute()
-const active = ref(route.path)
 const developers = ref([])
 const loading = ref(false)
 const detailDialog = ref(false)

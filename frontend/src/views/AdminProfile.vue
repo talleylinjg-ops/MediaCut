@@ -1,15 +1,6 @@
 <template>
-  <el-container>
-    <el-aside width="200px">
-      <el-menu :default-active="active" router>
-        <el-menu-item index="/admin">首页</el-menu-item>
-        <el-menu-item index="/developers">开发者管理</el-menu-item>
-        <el-menu-item index="/stats">调用统计</el-menu-item>
-        <el-menu-item index="/account">账号中心</el-menu-item>
-      </el-menu>
-    </el-aside>
-    <el-main>
-      <h3>账号中心</h3>
+  <AdminShell>
+    <h3>账号中心</h3>
 
       <el-card style="max-width: 560px">
         <template #header><b>修改管理员资料</b></template>
@@ -18,7 +9,10 @@
             <el-input v-model="profile.username" placeholder="用于登录管理后台" />
           </el-form-item>
           <el-form-item label="名称">
-            <el-input v-model="profile.name" placeholder="管理员显示名称" />
+            <el-input v-model="profile.name" disabled placeholder="管理员显示名称" />
+            <div class="el-form-item__tip" style="line-height: 1.6; font-size: 12px; color: #909399">
+              名称不可修改，仅登录账号可修改
+            </div>
           </el-form-item>
           <el-alert type="info" :closable="false" show-icon style="margin-bottom: 16px" title="修改登录账号后，下次登录需使用新账号。" />
           <el-form-item>
@@ -139,18 +133,14 @@
           </el-form-item>
         </el-form>
       </el-card>
-    </el-main>
-  </el-container>
+  </AdminShell>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api'
-
-const route = useRoute()
-const active = ref(route.path)
+import AdminShell from '../components/AdminShell.vue'
 
 const pwd = reactive({ current_password: '', new_password: '', confirm: '' })
 const savingPwd = ref(false)
@@ -168,15 +158,10 @@ async function saveProfile() {
     ElMessage.warning('登录账号不能为空')
     return
   }
-  if (!profile.name.trim()) {
-    ElMessage.warning('名称不能为空')
-    return
-  }
   savingProfile.value = true
   try {
     await http.put('/admin/profile', {
-      username: profile.username.trim(),
-      name: profile.name.trim()
+      username: profile.username.trim()
     })
     ElMessage.success('管理员资料已更新')
   } catch (e) {

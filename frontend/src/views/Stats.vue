@@ -1,15 +1,6 @@
 <template>
-  <el-container>
-    <el-aside width="200px">
-      <el-menu :default-active="active" router>
-        <el-menu-item index="/admin">首页</el-menu-item>
-        <el-menu-item index="/developers">开发者管理</el-menu-item>
-        <el-menu-item index="/stats">调用统计</el-menu-item>
-        <el-menu-item index="/account">账号中心</el-menu-item>
-      </el-menu>
-    </el-aside>
-    <el-main>
-      <h3>调用统计</h3>
+  <AdminShell>
+    <h3>调用统计</h3>
       <el-table :data="stats" v-loading="loading">
         <el-table-column prop="endpoint" label="接口" />
         <el-table-column prop="count" label="调用次数" />
@@ -33,18 +24,15 @@
           <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
         </el-table-column>
       </el-table>
-    </el-main>
-  </el-container>
+  </AdminShell>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api'
+import AdminShell from '../components/AdminShell.vue'
 
-const route = useRoute()
-const active = ref(route.path)
 const stats = ref([])
 const loading = ref(false)
 const logs = ref([])

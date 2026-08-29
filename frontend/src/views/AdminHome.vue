@@ -1,15 +1,6 @@
 <template>
-  <el-container>
-    <el-aside width="200px">
-      <el-menu :default-active="active" router>
-        <el-menu-item index="/admin">首页</el-menu-item>
-        <el-menu-item index="/developers">开发者管理</el-menu-item>
-        <el-menu-item index="/stats">调用统计</el-menu-item>
-        <el-menu-item index="/account">账号中心</el-menu-item>
-      </el-menu>
-    </el-aside>
-    <el-main>
-      <h3>平台总览</h3>
+  <AdminShell>
+    <h3>平台总览</h3>
       <el-row :gutter="16">
         <el-col :span="8">
           <el-card>
@@ -51,18 +42,15 @@
           </el-card>
         </el-col>
       </el-row>
-    </el-main>
-  </el-container>
+  </AdminShell>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { onMounted, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api'
+import AdminShell from '../components/AdminShell.vue'
 
-const route = useRoute()
-const active = ref(route.path)
 const d = reactive({
   total_developers: 0,
   active_developers: 0,
