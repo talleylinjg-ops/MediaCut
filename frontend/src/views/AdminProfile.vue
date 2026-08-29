@@ -8,10 +8,17 @@
           <el-form-item label="登录账号">
             <el-input v-model="profile.username" placeholder="用于登录管理后台" />
           </el-form-item>
-          <el-form-item label="名称">
-            <el-input v-model="profile.name" disabled placeholder="管理员显示名称" />
+          <el-form-item label="管理员级别">
+            <el-select v-model="profile.name" style="width: 200px">
+              <el-option v-for="t in adminTiers" :key="t" :label="t" :value="t" />
+              <el-option
+                v-if="profile.name && !adminTiers.includes(profile.name)"
+                :label="profile.name + '（历史值）'"
+                :value="profile.name"
+              />
+            </el-select>
             <div class="el-form-item__tip" style="line-height: 1.6; font-size: 12px; color: #909399">
-              名称不可修改，仅登录账号可修改
+              管理员级别只能从预设挡位中选择，不可自由输入
             </div>
           </el-form-item>
           <el-alert type="info" :closable="false" show-icon style="margin-bottom: 16px" title="修改登录账号后，下次登录需使用新账号。" />
@@ -152,16 +159,22 @@ const savingToken = ref(false)
 
 const profile = reactive({ username: '', name: '' })
 const savingProfile = ref(false)
+const adminTiers = ['超级管理员', '高级管理员', '普通管理员', '操作员']
 
 async function saveProfile() {
   if (!profile.username.trim()) {
     ElMessage.warning('登录账号不能为空')
     return
   }
+  if (!profile.name.trim()) {
+    ElMessage.warning('请选择管理员级别')
+    return
+  }
   savingProfile.value = true
   try {
     await http.put('/admin/profile', {
-      username: profile.username.trim()
+      username: profile.username.trim(),
+      name: profile.name.trim()
     })
     ElMessage.success('管理员资料已更新')
   } catch (e) {

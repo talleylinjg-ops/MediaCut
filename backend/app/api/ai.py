@@ -47,14 +47,15 @@ def submit_chat(
 
     if media is not None:
         content_type = media.content_type or ""
-        if content_type.startswith("image/"):
+        ext = (media.filename or "").rsplit(".", 1)[-1].lower()
+        if content_type.startswith("image/") or ext in image_service.EXT_ALLOWED:
             image_service.validate_image(content_type, media.size or 0)
             params["media_kind"] = "image"
-            ext = (media.filename or "media.png").rsplit(".", 1)[-1].lower() or "png"
-        elif content_type.startswith("audio/"):
-            audio_service.validate_audio(content_type, media.size or 0)
+            ext = ext or "png"
+        elif content_type.startswith("audio/") or ext in audio_service.EXT_ALLOWED:
+            audio_service.validate_audio(content_type, media.size or 0, ext)
             params["media_kind"] = "audio"
-            ext = (media.filename or "media.wav").rsplit(".", 1)[-1].lower() or "wav"
+            ext = ext or "wav"
         else:
             raise HTTPException(status_code=400, detail="media must be image or audio")
         params["media_ext"] = ext

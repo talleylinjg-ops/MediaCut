@@ -127,6 +127,8 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
             params["volume"] = {"gain": 2.0}
         elif "小声" in t:
             params["volume"] = {"gain": 0.5}
+        if re.search(r"杂音|降噪|去噪|降噪点|清理背景音", t):
+            params["denoise"] = True
         for fmt in ("mp3", "wav", "aac"):
             if f"转{fmt}" in t or fmt in t:
                 params.setdefault("output_format", fmt)

@@ -21,8 +21,8 @@ def image_edit(
     db: Session = Depends(get_db),
 ):
     price = billing.get_price("/api/v1/image/edit")
-    quota.check_quota(db, developer, price)
-    image_service.validate_image(file.content_type or "", file.size or 0)
+    source_ext = (file.filename or "").rsplit(".", 1)[-1].lower()
+    image_service.validate_image(file.content_type or "", file.size or 0, source_ext)
     data = file.file.read()
     try:
         parsed = json.loads(params) if params else {}

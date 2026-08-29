@@ -10,13 +10,17 @@ from app.config import IMAGE_ALLOWED_FORMATS, IMAGE_MAX_SIZE
 FILTERS = {"gray", "blur", "sharpen", "edge", "emboss"}
 OUTPUT_FORMATS = {"png", "jpeg", "webp", "bmp"}
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+EXT_ALLOWED = {"png", "jpg", "jpeg", "webp", "bmp", "gif"}
 
 
-def validate_image(content_type: str, size: int) -> None:
+def validate_image(content_type: str, size: int, source_ext: str = "") -> None:
     if size > IMAGE_MAX_SIZE:
         raise HTTPException(status_code=413, detail="file too large")
-    if content_type not in IMAGE_ALLOWED_FORMATS:
-        raise HTTPException(status_code=400, detail="invalid file format")
+    if content_type in IMAGE_ALLOWED_FORMATS:
+        return
+    if source_ext and source_ext.lower() in EXT_ALLOWED:
+        return
+    raise HTTPException(status_code=400, detail="invalid file format")
 
 
 def apply_crop(img: Image.Image, box) -> Image.Image:

@@ -84,6 +84,10 @@ def adjust_volume(input_path: str, gain: float, output_path: str) -> None:
     run_ffmpeg(["-i", input_path, "-filter:a", f"volume={gain}", "-c:a", "pcm_s16le", output_path])
 
 
+def denoise_audio(input_path: str, output_path: str) -> None:
+    run_ffmpeg(["-i", input_path, "-af", "afftdn=nf=-30", "-c:a", "pcm_s16le", output_path])
+
+
 def convert_audio(input_path: str, output_format: str, output_path: str) -> None:
     if output_format not in OUTPUT_FORMATS:
         raise HTTPException(status_code=400, detail=f"unsupported output format: {output_format}")
@@ -117,6 +121,11 @@ def process_audio(data: bytes, params: dict, source_ext: str, save_dir: str) -> 
         if "volume" in params:
             tmp = os.path.join(save_dir, f"vol_{uuid.uuid4().hex}.wav")
             adjust_volume(current, params["volume"]["gain"], tmp)
+            temp_files.append(tmp)
+            current = tmp
+        if params.get("denoise"):
+            tmp = os.path.join(save_dir, f"den_{uuid.uuid4().hex}.wav")
+            denoise_audio(current, tmp)
             temp_files.append(tmp)
             current = tmp
         if output_format != "wav":

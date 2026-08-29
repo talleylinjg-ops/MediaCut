@@ -82,6 +82,9 @@
             </el-form>
             <div v-if="imgResult">
               <img :src="imgResult" style="max-width: 100%; max-height: 400px; border: 1px solid #e4e7ed" />
+              <div style="margin-top: 8px">
+                <el-link type="primary" :href="imgResult" download="edited-image.png">下载成品图</el-link>
+              </div>
             </div>
           </el-tab-pane>
 
@@ -123,6 +126,9 @@
             </el-form>
             <div v-if="audResult">
               <audio :src="audResult" controls style="width: 100%" />
+              <div style="margin-top: 8px">
+                <el-link type="primary" :href="audResult" download="edited-audio.wav">下载成品音频</el-link>
+              </div>
             </div>
           </el-tab-pane>
 
@@ -158,6 +164,9 @@
                 </div>
                 <div v-if="m.attachments" style="font-size: 12px; color: #909399; margin-top: 4px">{{ m.attachments }}</div>
                 <img v-if="m.kind === 'image' && m.url" :src="m.url" style="max-width: 260px; margin-top: 8px; border: 1px solid #e4e7ed" />
+                <div v-if="m.url && m.fname" style="margin-top: 8px">
+                  <el-link type="primary" :href="m.url" :download="m.fname">下载{{ m.kind === 'video' ? '视频' : m.kind === 'audio' ? '音频' : '图片' }}</el-link>
+                </div>
                 <audio v-if="m.kind === 'audio' && m.url" :src="m.url" controls style="width: 100%; margin-top: 8px" />
                 <video v-if="m.kind === 'video' && m.url" :src="m.url" controls style="max-width: 400px; width: 100%; margin-top: 8px; border: 1px solid #e4e7ed" />
               </div>
@@ -442,6 +451,7 @@ async function sendChat() {
       const name = out.result_url.split('/').pop()
       const fileResp = await http.get(`/result/${taskId}/${name}`, { headers, responseType: 'blob' })
       msg.kind = out.result_kind
+      msg.fname = name
       msg.url = URL.createObjectURL(fileResp.data)
     }
     messages.value.push(msg)
