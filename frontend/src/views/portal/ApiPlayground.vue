@@ -61,6 +61,16 @@
                   <el-option label="边缘" value="edge" />
                   <el-option label="浮雕" value="emboss" />
                   <el-option label="电影色调" value="cinematic" />
+                  <el-option label="反色" value="invert" />
+                  <el-option label="棕褐复古" value="sepia" />
+                  <el-option label="暖色调" value="warm" />
+                  <el-option label="冷色调" value="cool" />
+                  <el-option label="马赛克" value="pixelate" />
+                  <el-option label="暗角" value="vignette" />
+                  <el-option label="高对比" value="contrast" />
+                  <el-option label="素描" value="sketch" />
+                  <el-option label="卡通" value="cartoon" />
+                  <el-option label="镜像" value="flip" />
                 </el-select>
               </el-form-item>
               <el-form-item label="缩放宽度">

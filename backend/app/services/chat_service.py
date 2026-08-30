@@ -16,7 +16,7 @@ SYSTEM_PROMPT = (
     "只输出一个 JSON 对象，不要输出任何其他文字。JSON 结构："
     '{"action":"image_edit|audio_edit|matting|enhance|asr|tts|image_to_video|reply","params":{},"reply":"给用户的简短中文回复"}。'
     "图片输入时 action 可选 image_edit/matting/enhance/image_to_video，"
-    "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
+    "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss/cinematic/invert/sepia/warm/cool/pixelate/vignette/contrast/sketch/cartoon/flip)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
     "watermark.position 可为 'center' 或 [x,y] 坐标。"
     "image_to_video params 支持 duration(秒)，将图片生成为指定时长的视频。"
     "音频输入时 action 可选 audio_edit/asr，"
@@ -93,6 +93,26 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
             params["filter"] = "emboss"
         elif re.search(r"大片|电影|原色|调色|色调|质感|滤镜", t):
             params["filter"] = "cinematic"
+        elif re.search(r"反色|负片|底片", t):
+            params["filter"] = "invert"
+        elif re.search(r"素描|铅笔画|手绘", t):
+            params["filter"] = "sketch"
+        elif re.search(r"复古|怀旧|棕褐|老照片|旧照片", t):
+            params["filter"] = "sepia"
+        elif re.search(r"暖色|暖调|暖光", t):
+            params["filter"] = "warm"
+        elif re.search(r"冷色|冷调", t):
+            params["filter"] = "cool"
+        elif re.search(r"马赛克|像素化", t):
+            params["filter"] = "pixelate"
+        elif "暗角" in t:
+            params["filter"] = "vignette"
+        elif re.search(r"高对比|增强对比|对比度", t):
+            params["filter"] = "contrast"
+        elif re.search(r"卡通|漫画|动漫化", t):
+            params["filter"] = "cartoon"
+        elif re.search(r"镜像|翻转|左右翻转", t):
+            params["filter"] = "flip"
         m = re.search(r"(放大|缩小)", t)
         if m:
             ratio = 2.0 if m.group(1) == "放大" else 0.5

@@ -7,7 +7,24 @@ from PIL import Image, ImageDraw, ImageFont
 
 from app.config import IMAGE_ALLOWED_FORMATS, IMAGE_MAX_SIZE
 
-FILTERS = {"gray", "blur", "sharpen", "edge", "emboss", "cinematic"}
+FILTERS = {
+    "gray",
+    "blur",
+    "sharpen",
+    "edge",
+    "emboss",
+    "cinematic",
+    "invert",
+    "sepia",
+    "warm",
+    "cool",
+    "pixelate",
+    "vignette",
+    "contrast",
+    "sketch",
+    "cartoon",
+    "flip",
+}
 OUTPUT_FORMATS = {"png", "jpeg", "webp", "bmp"}
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 EXT_ALLOWED = {"png", "jpg", "jpeg", "webp", "bmp", "gif"}
@@ -53,8 +70,19 @@ def apply_filter(img: Image.Image, filter_type: str) -> Image.Image:
     if filter_type not in FILTERS:
         raise HTTPException(status_code=400, detail=f"unsupported filter: {filter_type}")
     arr = np.array(img.convert("RGB"))
+    h, w = arr.shape[:2]
     if filter_type == "gray":
         out = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+        return Image.fromarray(out).convert("RGB")
+    if filter_type == "edge":
+        gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+        out = cv2.Canny(gray, 100, 200)
+        return Image.fromarray(out).convert("RGB")
+    if filter_type == "sketch":
+        gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
+        inv = 255 - gray
+        blur = cv2.GaussianBlur(inv, (21, 21), 0)
+        out = cv2.divide(gray, 255 - blur, scale=256)
         return Image.fromarray(out).convert("RGB")
     if filter_type == "cinematic":
         hsv = cv2.cvtColor(arr, cv2.COLOR_RGB2HSV)
@@ -65,11 +93,43 @@ def apply_filter(img: Image.Image, filter_type: str) -> Image.Image:
         out[:, :, 0] = np.clip(out[:, :, 0] * 1.06, 0, 255).astype(np.uint8)
         out[:, :, 2] = np.clip(out[:, :, 2] * 0.92, 0, 255).astype(np.uint8)
         return Image.fromarray(out)
-    if filter_type == "edge":
+    if filter_type == "invert":
+        out = 255 - arr
+    elif filter_type == "sepia":
+        m = np.array([[0.393, 0.769, 0.189], [0.349, 0.686, 0.168], [0.272, 0.534, 0.131]])
+        out = np.clip(arr @ m.T, 0, 255).astype(np.uint8)
+    elif filter_type == "warm":
+        out = arr.copy().astype(np.float32)
+        out[:, :, 0] = np.clip(out[:, :, 0] * 1.15, 0, 255)
+        out[:, :, 2] = np.clip(out[:, :, 2] * 0.88, 0, 255)
+        out = out.astype(np.uint8)
+    elif filter_type == "cool":
+        out = arr.copy().astype(np.float32)
+        out[:, :, 2] = np.clip(out[:, :, 2] * 1.15, 0, 255)
+        out[:, :, 0] = np.clip(out[:, :, 0] * 0.9, 0, 255)
+        out = out.astype(np.uint8)
+    elif filter_type == "pixelate":
+        sw = max(8, w // 12)
+        sh = max(8, h // 12)
+        small = cv2.resize(arr, (sw, sh), interpolation=cv2.INTER_LINEAR)
+        out = cv2.resize(small, (w, h), interpolation=cv2.INTER_NEAREST)
+    elif filter_type == "vignette":
+        y, x = np.ogrid[:h, :w]
+        cx, cy = w / 2.0, h / 2.0
+        dist = np.sqrt(((x - cx) / cx) ** 2 + ((y - cy) / cy) ** 2)
+        mask = np.clip(1 - 0.55 * dist, 0, 1).astype(np.float32)
+        out = (arr * mask[:, :, None]).astype(np.uint8)
+    elif filter_type == "contrast":
+        out = cv2.convertScaleAbs(arr, alpha=1.45, beta=-25)
+    elif filter_type == "cartoon":
         gray = cv2.cvtColor(arr, cv2.COLOR_RGB2GRAY)
-        out = cv2.Canny(gray, 100, 200)
-        return Image.fromarray(out).convert("RGB")
-    if filter_type == "blur":
+        gray = cv2.medianBlur(gray, 5)
+        edges = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, 9)
+        color = cv2.bilateralFilter(arr, 9, 150, 150)
+        out = cv2.bitwise_and(color, color, mask=edges)
+    elif filter_type == "flip":
+        out = arr[:, ::-1]
+    elif filter_type == "blur":
         out = cv2.GaussianBlur(arr, (0, 0), 2)
     elif filter_type == "sharpen":
         kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
