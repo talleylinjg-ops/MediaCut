@@ -131,13 +131,13 @@ def client_login(payload: ClientLogin, db: Session = Depends(get_db)):
             db.add(developer)
             db.commit()
             db.refresh(developer)
-        return ClientToken(token=create_client_token(developer.id))
+        return ClientToken(token=create_client_token(developer.id), api_key=developer.api_key)
 
     if developer is None or not verify_password(payload.password, developer.password_hash):
         raise HTTPException(status_code=401, detail="invalid credentials")
     if developer.status != "active":
         raise HTTPException(status_code=403, detail="account disabled")
-    return ClientToken(token=create_client_token(developer.id))
+    return ClientToken(token=create_client_token(developer.id), api_key=developer.api_key)
 
 
 @router.get("/client/me", response_model=ClientOut)

@@ -220,6 +220,10 @@ async function load() {
     logs.value = logsResp.data
     orders.value = ordersResp.data
     payStatus.value = payResp.data
+    if (meResp.data.api_key && !localStorage.getItem('saved_api_key')) {
+      localStorage.setItem('saved_api_key', meResp.data.api_key)
+      savedKey.value = meResp.data.api_key
+    }
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '加载失败')
   } finally {

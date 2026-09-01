@@ -64,7 +64,11 @@ async function login() {
   try {
     const { data } = await http.post('/dev/client/login', form)
     localStorage.setItem('client_token', data.token)
-    ElMessage.success('登录成功')
+    if (data.api_key) {
+      localStorage.setItem('saved_api_key', data.api_key)
+      savedKey.value = data.api_key
+    }
+    ElMessage.success('登录成功，API Key 已自动保存到本机')
     router.push('/client/console')
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '登录失败')

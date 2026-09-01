@@ -106,6 +106,7 @@ class ClientLogin(BaseModel):
 
 class ClientToken(BaseModel):
     token: str
+    api_key: Optional[str] = None
 
 
 class RechargeRequest(BaseModel):
