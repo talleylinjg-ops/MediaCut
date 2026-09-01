@@ -153,10 +153,19 @@
               style="margin-bottom: 12px"
               title="AI 剪辑即对话剪辑：导入源文件后，用一句话描述需求，AI 自动理解并执行（抠图/增强/识别/合成/加水印/转格式等）。"
             />
-            <div style="margin-bottom: 12px">
+            <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
               <el-button type="primary" plain @click="pickMedia">导入源文件</el-button>
-              <span v-if="attach" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ attach.file.name }}</span>
-              <span v-else style="margin-left: 12px; font-size: 12px; color: #909399">支持图片或音频，可从右侧按钮选择其他输入方式</span>
+              <span v-if="attach" style="font-size: 13px; color: #67c23a">已导入：{{ attach.file.name }}</span>
+              <el-link v-if="attach" type="danger" :underline="false" @click="attach = null">清除</el-link>
+              <span v-else style="font-size: 12px; color: #909399">支持图片或音频，可从右侧按钮选择其他输入方式</span>
+              <el-alert
+                v-if="attach"
+                type="success"
+                :closable="false"
+                show-icon
+                style="flex-basis: 100%"
+                title="附件已保留：继续发送指令将处理当前附件，换图请重新导入或点击清除"
+              />
             </div>
             <div
               ref="chatBox"
@@ -458,7 +467,6 @@ async function sendChat() {
       if (poll.data.status === 'failed') {
         messages.value.push({ role: 'assistant', text: '处理失败：' + (poll.data.error || '未知错误') })
         chatLoading.value = false
-        attach.value = null
         chatText.value = ''
         scrollDown()
         return
@@ -467,7 +475,6 @@ async function sendChat() {
     if (!out) {
       messages.value.push({ role: 'assistant', text: '处理超时，请稍后在控制台查看' })
       chatLoading.value = false
-      attach.value = null
       chatText.value = ''
       scrollDown()
       return
@@ -486,8 +493,8 @@ async function sendChat() {
     messages.value.push({ role: 'assistant', text: '提交失败：' + (e.response?.data?.detail || e.message || '未知错误') })
   } finally {
     chatLoading.value = false
-    attach.value = null
     chatText.value = ''
+    if (attach.value?.type === 'voice') attach.value = null
     scrollDown()
   }
 }

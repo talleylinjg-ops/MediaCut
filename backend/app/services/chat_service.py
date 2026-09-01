@@ -8,8 +8,8 @@ import httpx
 from app.core.settings import get_modelscope_token
 from app.services import ai_service, audio_service, image_service, video_service
 
-MODELSCOPE_CHAT_URL = "https://api.modelscope.cn/v1/chat/completions"
-CHAT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
+MODELSCOPE_CHAT_URL = "https://api-inference.modelscope.cn/v1/chat/completions"
+CHAT_MODEL = "Qwen/Qwen3.5-35B-A3B"
 
 SYSTEM_PROMPT = (
     "你是媒体剪辑助手，根据用户请求和输入媒体类型决定执行动作。"
@@ -17,7 +17,7 @@ SYSTEM_PROMPT = (
     '{"action":"image_edit|audio_edit|matting|enhance|asr|tts|image_to_video|reply","params":{},"reply":"给用户的简短中文回复"}。'
     "图片输入时 action 可选 image_edit/matting/enhance/image_to_video，"
     "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss/cinematic/invert/sepia/warm/cool/pixelate/vignette/contrast/sketch/cartoon/flip)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
-    "watermark.position 可为 'center' 或 [x,y] 坐标。"
+    "watermark.position 可为 'center'/'top-left'/'top-right'/'bottom-left'/'bottom-right' 或 [x,y] 坐标。"
     "image_to_video params 支持 duration(秒)，将图片生成为指定时长的视频。"
     "音频输入时 action 可选 audio_edit/asr，"
     "音频编辑 params 支持 crop(start,end)、volume(gain)、output_format(mp3/wav/aac)。"
@@ -117,7 +117,7 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
         if m:
             ratio = 2.0 if m.group(1) == "放大" else 0.5
             params.setdefault("resize", {"width": 0, "height": 0})
-        if re.search(r"logo|水印|加字|加文字|打上|加上", t, re.IGNORECASE):
+        if re.search(r"logo|水印|加字|加文字|打上|加上|电话号码|手机号", t, re.IGNORECASE):
             wm_text = None
             lm = re.search(r"logo\s*([A-Za-z0-9]+)", t, re.IGNORECASE)
             if lm:
@@ -126,8 +126,20 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
                 m = re.search(r"(?:水印|加字|加文字)\s*[:：]?\s*([A-Za-z0-9\u4e00-\u9fff]+)", t)
                 if m:
                     wm_text = m.group(1)
+            if not wm_text:
+                m = re.search(r"(?:电话号码|手机号|电话|号码)\s*[:：]?\s*([0-9]{5,})", t)
+                if m:
+                    wm_text = m.group(1)
             wm = {"text": wm_text or "MediaCut", "size": 36}
-            if "中间" in t or "居中" in t:
+            if "右上" in t:
+                wm["position"] = "top-right"
+            elif "右下" in t:
+                wm["position"] = "bottom-right"
+            elif "左下" in t:
+                wm["position"] = "bottom-left"
+            elif "左上" in t:
+                wm["position"] = "top-left"
+            elif "中间" in t or "居中" in t:
                 wm["position"] = "center"
             params.setdefault("watermark", wm)
         for fmt in ("png", "jpeg", "webp"):

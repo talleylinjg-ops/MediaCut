@@ -1,9 +1,13 @@
 <template>
   <AdminShell>
-    <h3>账号中心</h3>
+    <div class="account-hero">
+      <h3 class="page-title">账号中心</h3>
+      <p class="page-sub">管理管理员账号、ModelScope AI 服务与支付渠道配置</p>
+    </div>
+    <div class="account-wrap">
 
-      <el-card style="max-width: 560px">
-        <template #header><b>修改管理员资料</b></template>
+      <el-card class="tcard" shadow="hover" style="max-width: 620px">
+        <template #header><span class="tcard-header">修改管理员资料</span></template>
         <el-form :model="profile" label-width="110px" @submit.prevent>
           <el-form-item label="登录账号">
             <el-input v-model="profile.username" placeholder="用于登录管理后台" />
@@ -28,8 +32,8 @@
         </el-form>
       </el-card>
 
-      <el-card style="max-width: 560px; margin-top: 20px">
-        <template #header><b>修改管理员密码</b></template>
+      <el-card class="tcard" shadow="hover" style="max-width: 620px; margin-top: 20px">
+        <template #header><span class="tcard-header">修改管理员密码</span></template>
         <el-form :model="pwd" label-width="110px" @submit.prevent>
           <el-form-item label="当前密码">
             <el-input v-model="pwd.current_password" type="password" show-password />
@@ -46,8 +50,8 @@
         </el-form>
       </el-card>
 
-      <el-card style="max-width: 560px; margin-top: 20px">
-        <template #header><b>ModelScope AI 配置</b></template>
+      <el-card class="tcard" shadow="hover" style="max-width: 620px; margin-top: 20px">
+        <template #header><span class="tcard-header">ModelScope AI 配置</span></template>
         <el-alert
           type="info"
           :closable="false"
@@ -82,8 +86,8 @@
           </el-form-item>
         </el-form>
       </el-card>
-      <el-card style="max-width: 560px; margin-top: 20px">
-        <template #header><b>支付渠道配置</b></template>
+      <el-card class="tcard" shadow="hover" style="max-width: 620px; margin-top: 20px">
+        <template #header><span class="tcard-header">支付渠道配置</span></template>
         <el-alert
           type="info"
           :closable="false"
@@ -140,6 +144,7 @@
           </el-form-item>
         </el-form>
       </el-card>
+    </div>
   </AdminShell>
 </template>
 
@@ -321,3 +326,63 @@ async function savePayConfig() {
 
 onMounted(loadConfig)
 </script>
+
+<style scoped>
+.account-hero {
+  padding: 24px 28px 20px;
+  background: linear-gradient(120deg, #409eff22, #ffffff);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border: 1px solid #ebeef5;
+}
+.page-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #303133;
+}
+.page-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #909399;
+}
+.account-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.tcard {
+  border-radius: 10px;
+  transition: box-shadow 0.2s;
+}
+.tcard:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1) !important;
+}
+.tcard :deep(.el-card__header) {
+  background: linear-gradient(90deg, #f5f7fa, #ffffff);
+  border-radius: 10px 10px 0 0;
+}
+.tcard-header {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  position: relative;
+  padding-left: 12px;
+}
+.tcard-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+  background: #409eff;
+}
+.tcard :deep(.el-input__wrapper),
+.tcard :deep(.el-textarea__inner) {
+  border-radius: 6px;
+}
+</style>
