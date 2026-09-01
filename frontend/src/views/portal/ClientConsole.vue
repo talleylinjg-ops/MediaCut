@@ -78,12 +78,21 @@
 
       <el-card style="margin-top: 20px">
         <h3>API Key</h3>
-        <p v-if="newKey">
-          <el-alert type="success" :closable="false" title="新 Key 已生成，请立即保存（仅此一次展示）：" />
-          <code style="display: block; margin-top: 8px; word-break: break-all">{{ newKey }}</code>
+        <el-alert v-if="newKey" type="success" :closable="false" title="新 Key 已生成，并已自动保存到本机（退出登录不丢失），可复制分享给他人调用：" />
+        <div v-if="newKey || savedKey" style="margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+          <code style="word-break: break-all; background: #f5f7fa; padding: 8px 12px; border-radius: 6px; border: 1px solid #e4e7ed">{{ newKey || savedKey }}</code>
+          <el-button size="small" type="primary" plain @click="copyKey(newKey || savedKey)">复制</el-button>
+        </div>
+        <p v-if="!newKey && savedKey" style="margin: 8px 0 0; font-size: 12px; color: #909399">
+          本机保存的 API Key，退出登录后仍保留，可分享给他人调用本平台接口。
         </p>
-        <p v-else>Key 以哈希形式存储，仅在申请或重置时展示一次。</p>
-        <el-button type="warning" @click="resetKey">重置 API Key</el-button>
+        <p v-if="!newKey && !savedKey" style="margin: 8px 0 0; font-size: 12px; color: #909399">
+          Key 以哈希形式存储，仅申请或重置时展示一次。重置后将自动保存到本机。
+        </p>
+        <div style="margin-top: 10px">
+          <el-button type="warning" @click="resetKey">重置 API Key</el-button>
+          <el-button v-if="savedKey" type="danger" plain size="small" style="margin-left: 8px" @click="clearSavedKey">清除本机 Key</el-button>
+        </div>
       </el-card>
 
       <el-card style="margin-top: 20px">
@@ -172,6 +181,7 @@ const logs = ref([])
 const orders = ref([])
 const loading = ref(false)
 const newKey = ref('')
+const savedKey = ref(localStorage.getItem('saved_api_key') || '')
 const rechargeYuan = ref(10)
 const payMethod = ref('alipay')
 const recharging = ref(false)
@@ -274,7 +284,27 @@ async function resetKey() {
   await ElMessageBox.confirm('重置后旧 Key 立即失效，确定继续？', '重置 API Key', { type: 'warning' })
   const { data } = await http.post('/dev/client/reset-key')
   newKey.value = data.api_key
-  ElMessage.success('Key 已重置，请立即复制保存')
+  savedKey.value = data.api_key
+  localStorage.setItem('saved_api_key', data.api_key)
+  ElMessage.success('Key 已重置，已保存到本机，可复制分享')
+}
+
+function copyKey(k) {
+  if (!k) return
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(k)
+      .then(() => ElMessage.success('Key 已复制，可粘贴分享给他人'))
+      .catch(() => ElMessage.error('复制失败，请手动选择复制'))
+  } else {
+    ElMessage.error('当前浏览器不支持自动复制，请手动选择复制')
+  }
+}
+
+function clearSavedKey() {
+  localStorage.removeItem('saved_api_key')
+  savedKey.value = ''
+  newKey.value = ''
+  ElMessage.success('已清除本机保存的 Key')
 }
 
 async function changePassword() {
