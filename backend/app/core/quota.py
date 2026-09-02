@@ -16,7 +16,10 @@ def check_quota(db: Session, developer: models.Developer, price: int = 0) -> Non
     if developer.quota_used >= developer.quota_limit:
         raise HTTPException(status_code=429, detail="quota exceeded")
     if developer.billing_type == billing.BILLING_EXTERNAL and price > 0 and developer.balance < price:
-        raise HTTPException(status_code=402, detail="insufficient balance")
+        raise HTTPException(
+            status_code=402,
+            detail=f"余额不足（当前 {developer.balance} 点，本次需 {price} 点）。请在客户控制台充值或联系管理员。",
+        )
 
 
 def consume_quota(db: Session, developer: models.Developer, price: int = 0) -> None:
