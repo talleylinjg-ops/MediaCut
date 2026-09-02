@@ -23,9 +23,11 @@
           />
           <el-button type="primary" :loading="savingKey" @click="saveKey">保存</el-button>
           <el-button type="success" plain @click="$router.push('/register')">申请</el-button>
+          <el-button v-if="apiKey" plain @click="copyKey">复制 Key</el-button>
           <span v-if="keyInfo" style="font-size: 12px; color: #67c23a">
             Key 有效：{{ keyInfo.name }}（余额 {{ keyInfo.balance }} 点）
           </span>
+          <span v-if="keyInfo" style="font-size: 12px; color: #909399">Key 已保存在本机，退出/刷新不丢失，可分享给他人调用</span>
         </div>
         <el-alert
           v-if="keyInfoError"
@@ -223,7 +225,9 @@ import { ElMessage } from 'element-plus'
 import http from '../../api'
 import PortalNav from '../../components/PortalNav.vue'
 
-const apiKey = ref(sessionStorage.getItem('api_key') || '')
+const apiKey = ref(
+  localStorage.getItem('api_key') || localStorage.getItem('saved_api_key') || sessionStorage.getItem('api_key') || ''
+)
 const tab = ref('image')
 const running = ref(false)
 const savingKey = ref(false)
@@ -254,7 +258,7 @@ let recChunks = []
 const attachMeta = computed(() => (attach.value ? `导入文件：${attach.value.file.name}` : ''))
 
 onMounted(async () => {
-  const k = sessionStorage.getItem('api_key')
+  const k = localStorage.getItem('api_key') || localStorage.getItem('saved_api_key') || sessionStorage.getItem('api_key')
   if (k) {
     apiKey.value = k
     await validateKey(true)
@@ -282,6 +286,19 @@ async function validateKey(silent) {
   }
 }
 
+function copyKey() {
+  const k = apiKey.value.trim()
+  if (!k) return
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard
+      .writeText(k)
+      .then(() => ElMessage.success('Key 已复制，可粘贴分享给他人'))
+      .catch(() => ElMessage.error('复制失败，请手动选择复制'))
+  } else {
+    ElMessage.error('当前浏览器不支持自动复制，请手动选择复制')
+  }
+}
+
 async function saveKey() {
   const k = apiKey.value.trim()
   if (!k) return ElMessage.warning('请输入 API Key')
@@ -289,9 +306,11 @@ async function saveKey() {
   try {
     const { data } = await http.get('/dev/key/info', { headers: { Authorization: `Bearer ${k}` } })
     sessionStorage.setItem('api_key', k)
+    localStorage.setItem('api_key', k)
+    localStorage.setItem('saved_api_key', k)
     keyInfo.value = data
     keyInfoError.value = ''
-    ElMessage.success(`API Key 已保存并校验通过（${data.name}，余额 ${data.balance} 点）`)
+    ElMessage.success(`API Key 已保存到本机并校验通过（${data.name}，余额 ${data.balance} 点）`)
   } catch (e) {
     keyInfo.value = null
     keyInfoError.value = 'API Key 无效：' + (e.response?.data?.detail || '认证失败')
