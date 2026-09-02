@@ -78,13 +78,13 @@
 
       <el-card style="margin-top: 20px">
         <h3>API Key</h3>
-        <el-alert v-if="newKey" type="success" :closable="false" title="新 Key 已生成，并已自动保存到本机（退出登录不丢失），可复制分享给他人调用：" />
+        <el-alert v-if="newKey" type="success" :closable="false" title="新 Key 已生成，登录期间可随时查看/复制。退出登录将清除本机残留：" />
         <div v-if="newKey || savedKey" style="margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
           <code style="word-break: break-all; background: #f5f7fa; padding: 8px 12px; border-radius: 6px; border: 1px solid #e4e7ed">{{ newKey || savedKey }}</code>
           <el-button size="small" type="primary" plain @click="copyKey(newKey || savedKey)">复制</el-button>
         </div>
         <p v-if="!newKey && savedKey" style="margin: 8px 0 0; font-size: 12px; color: #909399">
-          本机保存的 API Key，退出登录后仍保留，可分享给他人调用本平台接口。
+          本机暂存的 API Key（仅本会员登录期内保留）。退出登录时将一并清除，需要长期使用请点击【复制】发给对方。
         </p>
         <p v-if="!newKey && !savedKey" style="margin: 8px 0 0; font-size: 12px; color: #909399">
           Key 以哈希形式存储，仅申请或重置时展示一次。重置后将自动保存到本机。
@@ -359,7 +359,10 @@ async function saveProfile() {
 function logout() {
   localStorage.removeItem('client_token')
   localStorage.removeItem('api_key')
+  localStorage.removeItem('saved_api_key')
   sessionStorage.removeItem('api_key')
+  savedKey.value = ''
+  ElMessage.success('已退出登录，本机保存的 API Key 已一并清除')
   router.push('/client/login')
 }
 

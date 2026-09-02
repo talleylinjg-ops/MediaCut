@@ -220,7 +220,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api'
 import PortalNav from '../../components/PortalNav.vue'
@@ -268,6 +268,15 @@ onMounted(async () => {
     tab.value = q
   }
 })
+
+function onKeyStorage(e) {
+  if (e.key === 'api_key' || e.key === 'saved_api_key' || e.key === null) {
+    apiKey.value = localStorage.getItem('api_key') || localStorage.getItem('saved_api_key') || ''
+    validateKey(true)
+  }
+}
+window.addEventListener('storage', onKeyStorage)
+onUnmounted(() => window.removeEventListener('storage', onKeyStorage))
 
 async function validateKey(silent) {
   const k = apiKey.value.trim()

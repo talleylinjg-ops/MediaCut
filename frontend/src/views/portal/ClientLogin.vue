@@ -19,7 +19,7 @@
       </el-card>
 
       <el-card v-if="savedKey" style="margin-top: 16px; background: #fdf6ec; border-color: #e6a23c">
-        <h3 style="margin: 0 0 8px; font-size: 14px; color: #e6a23c">本机保存的 API Key（退出登录不丢失）</h3>
+        <h3 style="margin: 0 0 8px; font-size: 14px; color: #e6a23c">本机暂存的 API Key</h3>
         <code style="display: block; word-break: break-all; background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #f3d19e">{{ savedKey }}</code>
         <div style="margin-top: 10px; display: flex; gap: 8px">
           <el-button size="small" type="warning" plain @click="copyKey">复制，分享给他人调用</el-button>
