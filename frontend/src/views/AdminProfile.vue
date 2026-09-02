@@ -1,92 +1,112 @@
 <template>
   <AdminShell>
     <div class="account-hero">
-      <h3 class="page-title">账号中心</h3>
-      <p class="page-sub">管理管理员账号、ModelScope AI 服务与支付渠道配置</p>
+      <div>
+        <h3 class="page-title">账号中心</h3>
+        <p class="page-sub">管理管理员账号、ModelScope AI 服务与支付渠道配置</p>
+      </div>
+      <div class="hero-right">
+        <span class="hero-label">当前级别</span>
+        <el-tag type="primary" effect="light" size="large">{{ profile.name || cfg.admin_username || '管理员' }}</el-tag>
+      </div>
     </div>
     <div class="account-wrap">
 
-      <el-card class="tcard" shadow="hover" style="max-width: 620px">
-        <template #header><span class="tcard-header">修改管理员资料</span></template>
-        <el-form :model="profile" label-width="110px" @submit.prevent>
-          <el-form-item label="登录账号">
-            <el-input v-model="profile.username" placeholder="用于登录管理后台" />
-          </el-form-item>
-          <el-form-item label="管理员级别">
-            <el-select v-model="profile.name" style="width: 200px">
-              <el-option v-for="t in adminTiers" :key="t" :label="t" :value="t" />
-              <el-option
-                v-if="profile.name && !adminTiers.includes(profile.name)"
-                :label="profile.name + '（历史值）'"
-                :value="profile.name"
-              />
-            </el-select>
-            <div class="el-form-item__tip" style="line-height: 1.6; font-size: 12px; color: #909399">
-              管理员级别只能从预设挡位中选择，不可自由输入
-            </div>
-          </el-form-item>
-          <el-alert type="info" :closable="false" show-icon style="margin-bottom: 16px" title="修改登录账号后，下次登录需使用新账号。" />
-          <el-form-item>
-            <el-button type="primary" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
+      <el-row :gutter="20">
+        <el-col :xs="24" :md="12">
+          <el-card class="tcard" shadow="hover">
+            <template #header><span class="tcard-header">修改管理员资料</span></template>
+            <el-form :model="profile" label-width="110px" @submit.prevent>
+              <el-form-item label="登录账号">
+                <el-input v-model="profile.username" placeholder="用于登录管理后台" />
+              </el-form-item>
+              <el-form-item label="管理员级别">
+                <el-select v-model="profile.name" style="width: 100%">
+                  <el-option v-for="t in adminTiers" :key="t" :label="t" :value="t" />
+                  <el-option
+                    v-if="profile.name && !adminTiers.includes(profile.name)"
+                    :label="profile.name + '（历史值）'"
+                    :value="profile.name"
+                  />
+                </el-select>
+                <div class="form-tip">管理员级别只能从预设挡位中选择，不可自由输入</div>
+              </el-form-item>
+              <el-form-item>
+                <el-alert
+                  type="info"
+                  :closable="false"
+                  show-icon
+                  style="width: 100%"
+                  title="修改登录账号后，下次登录需使用新账号。"
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
+              </el-form-item>
+            </el-form>
+          </el-card>
 
-      <el-card class="tcard" shadow="hover" style="max-width: 620px; margin-top: 20px">
-        <template #header><span class="tcard-header">修改管理员密码</span></template>
-        <el-form :model="pwd" label-width="110px" @submit.prevent>
-          <el-form-item label="当前密码">
-            <el-input v-model="pwd.current_password" type="password" show-password />
-          </el-form-item>
-          <el-form-item label="新密码">
-            <el-input v-model="pwd.new_password" type="password" show-password placeholder="至少 6 位" />
-          </el-form-item>
-          <el-form-item label="确认新密码">
-            <el-input v-model="pwd.confirm" type="password" show-password />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" :loading="savingPwd" @click="changePassword">保存密码</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
+          <el-card class="tcard" shadow="hover" style="margin-top: 20px">
+            <template #header><span class="tcard-header">修改管理员密码</span></template>
+            <el-form :model="pwd" label-width="110px" @submit.prevent>
+              <el-form-item label="当前密码">
+                <el-input v-model="pwd.current_password" type="password" show-password />
+              </el-form-item>
+              <el-form-item label="新密码">
+                <el-input v-model="pwd.new_password" type="password" show-password placeholder="至少 6 位" />
+              </el-form-item>
+              <el-form-item label="确认新密码">
+                <el-input v-model="pwd.confirm" type="password" show-password />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" :loading="savingPwd" @click="changePassword">保存密码</el-button>
+              </el-form-item>
+            </el-form>
+          </el-card>
+        </el-col>
 
-      <el-card class="tcard" shadow="hover" style="max-width: 620px; margin-top: 20px">
-        <template #header><span class="tcard-header">ModelScope AI 配置</span></template>
-        <el-alert
-          type="info"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 16px"
-          title="在 modelscope.cn 注册后，点击右上角头像 → 访问令牌 获取。填好后 AI 抠图/增强/ASR/TTS 即可使用。"
-        />
-        <el-form label-width="110px" @submit.prevent>
-          <el-form-item label="API Token">
-            <el-input
-              v-model="tokenInput"
-              type="password"
-              show-password
-              placeholder="sk- 开头的 ModelScope 访问令牌"
+        <el-col :xs="24" :md="12">
+          <el-card class="tcard" shadow="hover" style="height: 100%">
+            <template #header><span class="tcard-header">ModelScope AI 配置</span></template>
+            <el-alert
+              type="info"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 16px"
+              title="在 modelscope.cn 注册后，点击右上角头像 → 访问令牌 获取。填好后 AI 抠图/增强/ASR/TTS 即可使用。"
             />
-          </el-form-item>
-          <el-form-item label="当前状态">
-            <el-tag :type="configured ? 'success' : 'danger'">
-              {{ configured ? '已配置' : '未配置（AI 接口返回 503）' }}
-            </el-tag>
-          </el-form-item>
-          <el-form-item label="使用的模型">
-            <div style="line-height: 2">
-              <div v-for="(m, k) in cfg.models" :key="k">
-                <b>{{ k }}</b>：{{ m }}
-              </div>
-            </div>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" :loading="savingToken" @click="saveToken">保存 Token</el-button>
-            <el-button v-if="configured" @click="clearToken">清除</el-button>
-          </el-form-item>
-        </el-form>
-      </el-card>
-      <el-card class="tcard" shadow="hover" style="max-width: 620px; margin-top: 20px">
+            <el-form label-width="110px" @submit.prevent>
+              <el-form-item label="API Token">
+                <el-input
+                  v-model="tokenInput"
+                  type="password"
+                  show-password
+                  placeholder="sk- 开头的 ModelScope 访问令牌"
+                />
+              </el-form-item>
+              <el-form-item label="当前状态">
+                <el-tag :type="configured ? 'success' : 'danger'">
+                  {{ configured ? '已配置' : '未配置（AI 接口返回 503）' }}
+                </el-tag>
+              </el-form-item>
+              <el-form-item label="使用的模型">
+                <div class="model-list">
+                  <div v-for="(m, k) in cfg.models" :key="k" class="model-row">
+                    <span class="model-name">{{ k }}</span>
+                    <code class="model-val">{{ m }}</code>
+                  </div>
+                </div>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" :loading="savingToken" @click="saveToken">保存 Token</el-button>
+                <el-button v-if="configured" @click="clearToken">清除</el-button>
+              </el-form-item>
+            </el-form>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-card class="tcard" shadow="hover" style="margin-top: 20px">
         <template #header><span class="tcard-header">支付渠道配置</span></template>
         <el-alert
           type="info"
@@ -96,49 +116,52 @@
           title="配置后客户控制台即可真实收款（扫码支付）。需在支付宝开放平台 / 微信商户平台申请商户资质并获取密钥。未配置时充值下单会提示渠道未配置。"
         />
         <el-form label-width="110px" @submit.prevent>
-          <el-divider content-position="left">支付宝（当面付）</el-divider>
-          <el-form-item label="当前状态">
-            <el-tag :type="cfg.alipay_configured ? 'success' : 'danger'">
-              {{ cfg.alipay_configured ? '已配置' : '未配置' }}
-            </el-tag>
-          </el-form-item>
-          <el-form-item label="APPID">
-            <el-input v-model="pay.alipay_appid" placeholder="支付宝应用 APPID" />
-          </el-form-item>
-          <el-form-item label="应用私钥">
-            <el-input v-model="pay.alipay_private_key" type="textarea" :rows="3" placeholder="-----BEGIN RSA PRIVATE KEY-----" />
-          </el-form-item>
-          <el-form-item label="支付宝公钥">
-            <el-input v-model="pay.alipay_public_key" type="textarea" :rows="3" placeholder="支付宝公钥内容" />
-          </el-form-item>
-
-          <el-divider content-position="left">微信支付（Native 扫码）</el-divider>
-          <el-form-item label="当前状态">
-            <el-tag :type="cfg.wechat_configured ? 'success' : 'danger'">
-              {{ cfg.wechat_configured ? '已配置' : '未配置' }}
-            </el-tag>
-          </el-form-item>
-          <el-form-item label="AppID">
-            <el-input v-model="pay.wechat_appid" placeholder="微信公众平台 AppID" />
-          </el-form-item>
-          <el-form-item label="商户号">
-            <el-input v-model="pay.wechat_mchid" placeholder="微信支付商户号" />
-          </el-form-item>
-          <el-form-item label="APIv3 密钥">
-            <el-input v-model="pay.wechat_apiv3_key" placeholder="32 位 APIv3 密钥" />
-          </el-form-item>
-          <el-form-item label="证书序列号">
-            <el-input v-model="pay.wechat_serial_no" placeholder="商户 API 证书序列号" />
-          </el-form-item>
-          <el-form-item label="商户私钥">
-            <el-input v-model="pay.wechat_private_key" type="textarea" :rows="3" placeholder="-----BEGIN PRIVATE KEY-----" />
-          </el-form-item>
-
+          <el-row :gutter="24">
+            <el-col :xs="24" :md="12">
+              <el-divider content-position="left">支付宝（当面付）</el-divider>
+              <el-form-item label="当前状态">
+                <el-tag :type="cfg.alipay_configured ? 'success' : 'danger'">
+                  {{ cfg.alipay_configured ? '已配置' : '未配置' }}
+                </el-tag>
+              </el-form-item>
+              <el-form-item label="APPID">
+                <el-input v-model="pay.alipay_appid" placeholder="支付宝应用 APPID" />
+              </el-form-item>
+              <el-form-item label="应用私钥">
+                <el-input v-model="pay.alipay_private_key" type="textarea" :rows="3" placeholder="-----BEGIN RSA PRIVATE KEY-----" />
+              </el-form-item>
+              <el-form-item label="支付宝公钥">
+                <el-input v-model="pay.alipay_public_key" type="textarea" :rows="3" placeholder="支付宝公钥内容" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-divider content-position="left">微信支付（Native 扫码）</el-divider>
+              <el-form-item label="当前状态">
+                <el-tag :type="cfg.wechat_configured ? 'success' : 'danger'">
+                  {{ cfg.wechat_configured ? '已配置' : '未配置' }}
+                </el-tag>
+              </el-form-item>
+              <el-form-item label="AppID">
+                <el-input v-model="pay.wechat_appid" placeholder="微信公众平台 AppID" />
+              </el-form-item>
+              <el-form-item label="商户号">
+                <el-input v-model="pay.wechat_mchid" placeholder="微信支付商户号" />
+              </el-form-item>
+              <el-form-item label="APIv3 密钥">
+                <el-input v-model="pay.wechat_apiv3_key" placeholder="32 位 APIv3 密钥" />
+              </el-form-item>
+              <el-form-item label="证书序列号">
+                <el-input v-model="pay.wechat_serial_no" placeholder="商户 API 证书序列号" />
+              </el-form-item>
+              <el-form-item label="商户私钥">
+                <el-input v-model="pay.wechat_private_key" type="textarea" :rows="3" placeholder="-----BEGIN PRIVATE KEY-----" />
+              </el-form-item>
+            </el-col>
+          </el-row>
           <el-divider content-position="left">回调地址</el-divider>
-          <el-form-item label="回调基础地址">
+          <el-form-item label="回调基础地址" style="max-width: 720px">
             <el-input v-model="pay.notify_base" placeholder="如 https://your-domain.com，用于支付平台回调通知" />
           </el-form-item>
-
           <el-form-item>
             <el-button type="primary" :loading="savingPay" @click="savePayConfig">保存支付配置</el-button>
           </el-form-item>
@@ -329,6 +352,11 @@ onMounted(loadConfig)
 
 <style scoped>
 .account-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
   padding: 24px 28px 20px;
   background: linear-gradient(120deg, #409eff22, #ffffff);
   border-radius: 12px;
@@ -346,10 +374,17 @@ onMounted(loadConfig)
   font-size: 13px;
   color: #909399;
 }
-.account-wrap {
+.hero-right {
   display: flex;
-  flex-direction: column;
-  max-width: 720px;
+  align-items: center;
+  gap: 10px;
+}
+.hero-label {
+  font-size: 13px;
+  color: #909399;
+}
+.account-wrap {
+  max-width: 1100px;
   margin: 0 auto;
 }
 .tcard {
@@ -384,5 +419,31 @@ onMounted(loadConfig)
 .tcard :deep(.el-input__wrapper),
 .tcard :deep(.el-textarea__inner) {
   border-radius: 6px;
+}
+.form-tip {
+  line-height: 1.6;
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+.model-list {
+  width: 100%;
+  line-height: 1.9;
+}
+.model-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 4px 0;
+}
+.model-name {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: #606266;
+}
+.model-val {
+  font-size: 12px;
+  color: #909399;
+  word-break: break-all;
 }
 </style>
