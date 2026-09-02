@@ -220,7 +220,7 @@ async function load() {
     logs.value = logsResp.data
     orders.value = ordersResp.data
     payStatus.value = payResp.data
-    if (meResp.data.api_key && !localStorage.getItem('saved_api_key')) {
+    if (meResp.data.api_key) {
       localStorage.setItem('saved_api_key', meResp.data.api_key)
       savedKey.value = meResp.data.api_key
     }
