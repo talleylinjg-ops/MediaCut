@@ -33,6 +33,30 @@
           </span>
         </div>
         <el-alert
+          v-if="keyInfo && keyInfo.balance <= 0"
+          type="error"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+          title="该 Key 余额为 0，图片/音频剪辑将被拒绝（402）。请登录客户控制台充值后再使用：请在控制台输入金额并扫码支付，或联系平台管理员。"
+        >
+          <template #default>
+            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="goRecharge">去客户控制台充值</el-button>
+          </template>
+        </el-alert>
+        <el-alert
+          v-else-if="keyInfo && keyInfo.balance <= 5"
+          type="warning"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+          :title="`该 Key 余额仅剩 ${keyInfo.balance} 点，请及时充值以免剪辑中断。`"
+        >
+          <template #default>
+            <el-button size="small" type="warning" plain style="margin-top: 8px" @click="goRecharge">去充值</el-button>
+          </template>
+        </el-alert>
+        <el-alert
           v-if="keyInfoError"
           type="error"
           :closable="false"
@@ -335,6 +359,10 @@ function copyKey() {
   }
 }
 
+function goRecharge() {
+  location.href = localStorage.getItem('client_token') ? '/client/console' : '/client/login'
+}
+
 async function readErr(e) {
   const d = e?.response?.data
   if (d && typeof Blob !== 'undefined' && d instanceof Blob) {
@@ -419,6 +447,7 @@ async function runImage() {
   if (!apiKey.value) return ElMessage.warning('请先填写并保存 API Key')
   if (!imgFile.value) return ElMessage.warning('请先导入源文件')
   running.value = true
+  imgResult.value = ''
   try {
     const form = new FormData()
     form.append('file', imgFile.value)
@@ -427,7 +456,13 @@ async function runImage() {
       headers: { Authorization: `Bearer ${apiKey.value}` },
       responseType: 'blob'
     })
-    imgResult.value = URL.createObjectURL(resp.data)
+    const blob = resp.data
+    if (blob && blob.type && blob.type.startsWith('image/')) {
+      imgResult.value = URL.createObjectURL(blob)
+    } else {
+      const txt = blob instanceof Blob ? await blob.text() : ''
+      ElMessage.error(txt ? '返回异常：' + txt : '接口未返回图片，请重试')
+    }
   } catch (e) {
     ElMessage.error((await readErr(e)) || '处理失败')
   } finally {
@@ -447,11 +482,18 @@ async function runAudio() {
     const form = new FormData()
     form.append('file', audFile.value)
     form.append('params', JSON.stringify(params))
+    audResult.value = ''
     const resp = await http.post('/audio/edit', form, {
       headers: { Authorization: `Bearer ${apiKey.value}` },
       responseType: 'blob'
     })
-    audResult.value = URL.createObjectURL(resp.data)
+    const blob = resp.data
+    if (blob && blob.type && blob.type.startsWith('audio/')) {
+      audResult.value = URL.createObjectURL(blob)
+    } else {
+      const txt = blob instanceof Blob ? await blob.text() : ''
+      ElMessage.error(txt ? '返回异常：' + txt : '接口未返回音频，请重试')
+    }
   } catch (e) {
     ElMessage.error((await readErr(e)) || '处理失败')
   } finally {
