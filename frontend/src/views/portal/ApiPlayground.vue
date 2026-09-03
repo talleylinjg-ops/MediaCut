@@ -335,6 +335,23 @@ function copyKey() {
   }
 }
 
+async function readErr(e) {
+  const d = e?.response?.data
+  if (d && typeof Blob !== 'undefined' && d instanceof Blob) {
+    try {
+      const t = await d.text()
+      try {
+        return JSON.parse(t).detail || t
+      } catch {
+        return t || null
+      }
+    } catch {
+      return null
+    }
+  }
+  return d?.detail || e?.message || ''
+}
+
 function clearKey() {
   localStorage.removeItem('api_key')
   localStorage.removeItem('saved_api_key')
@@ -412,7 +429,7 @@ async function runImage() {
     })
     imgResult.value = URL.createObjectURL(resp.data)
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '处理失败')
+    ElMessage.error((await readErr(e)) || '处理失败')
   } finally {
     running.value = false
   }
@@ -436,7 +453,7 @@ async function runAudio() {
     })
     audResult.value = URL.createObjectURL(resp.data)
   } catch (e) {
-    ElMessage.error(e.response?.data?.detail || '处理失败')
+    ElMessage.error((await readErr(e)) || '处理失败')
   } finally {
     running.value = false
   }
