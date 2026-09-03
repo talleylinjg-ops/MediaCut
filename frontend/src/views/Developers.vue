@@ -3,7 +3,7 @@
     <h3>开发者管理</h3>
       <el-table :data="developers" v-loading="loading">
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="name" label="名称" />
+        <el-table-column prop="name" label="名称" width="100" />
         <el-table-column prop="email" label="邮箱" />
         <el-table-column label="API Key" width="220">
           <template #default="{ row }">
@@ -25,13 +25,15 @@
           </template>
         </el-table-column>
         <el-table-column prop="balance" label="余额(点)" width="90" />
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="280">
           <template #default="{ row }">
-            <el-button size="small" type="primary" plain @click="copyKey(row)">复制 KEY</el-button>
-            <el-button size="small" @click="toggleStatus(row)">
-              {{ row.status === 'active' ? '停用' : '启用' }}
-            </el-button>
-            <el-button size="small" type="warning" plain @click="viewDetail(row)">查看</el-button>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              <el-button size="small" type="primary" plain @click="copyKey(row)">复制 KEY</el-button>
+              <el-button size="small" @click="toggleStatus(row)">
+                {{ row.status === 'active' ? '停用' : '启用' }}
+              </el-button>
+              <el-button size="small" type="warning" plain @click="viewDetail(row)">查看</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
