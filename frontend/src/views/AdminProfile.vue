@@ -16,7 +16,7 @@
         <el-col :xs="24" :md="12">
           <el-card class="tcard" shadow="hover">
             <template #header><span class="tcard-header">修改管理员资料</span></template>
-            <el-form :model="profile" label-width="110px" @submit.prevent>
+            <el-form :model="profile" label-width="110px" class="account-form" @submit.prevent>
               <el-form-item label="登录账号">
                 <el-input v-model="profile.username" placeholder="用于登录管理后台" />
               </el-form-item>
@@ -48,7 +48,7 @@
 
           <el-card class="tcard" shadow="hover" style="margin-top: 20px">
             <template #header><span class="tcard-header">修改管理员密码</span></template>
-            <el-form :model="pwd" label-width="110px" @submit.prevent>
+            <el-form :model="pwd" label-width="110px" class="account-form" @submit.prevent>
               <el-form-item label="当前密码">
                 <el-input v-model="pwd.current_password" type="password" show-password />
               </el-form-item>
@@ -75,7 +75,7 @@
               style="margin-bottom: 16px"
               title="在 modelscope.cn 注册后，点击右上角头像 → 访问令牌 获取。填好后 AI 抠图/增强/ASR/TTS 即可使用。"
             />
-            <el-form label-width="110px" @submit.prevent>
+            <el-form label-width="110px" class="account-form" @submit.prevent>
               <el-form-item label="API Token">
                 <el-input
                   v-model="tokenInput"
@@ -384,8 +384,10 @@ onMounted(loadConfig)
   color: #909399;
 }
 .account-wrap {
-  max-width: 1100px;
-  margin: 0 auto;
+  width: 100%;
+}
+.account-form {
+  max-width: 600px;
 }
 .tcard {
   border-radius: 10px;
