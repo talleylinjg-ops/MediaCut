@@ -180,7 +180,7 @@
               :closable="false"
               show-icon
               style="margin-bottom: 12px"
-              title="AI 剪辑即对话剪辑：导入源文件后，用一句话描述需求，AI 自动理解并执行（抠图/增强/识别/合成/加水印/转格式等）。"
+              title="AI 剪辑即对话剪辑：导入源文件后，用一句话描述需求，AI 自动理解并执行。支持：滤镜（复古/黑白等16种）、抠图、画质增强、加文字水印（可指定方位）、裁剪/缩放/转格式、语音识别/合成。注意：无法凭空生成图中不存在的内容（如需「生成/换装」图片请另配图像生成引擎）。"
             />
             <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
               <el-button type="primary" plain @click="pickMedia">导入源文件</el-button>

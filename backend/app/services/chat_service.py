@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import re
@@ -10,24 +11,74 @@ from app.services import ai_service, audio_service, image_service, video_service
 
 MODELSCOPE_CHAT_URL = "https://api-inference.modelscope.cn/v1/chat/completions"
 CHAT_MODEL = "Qwen/Qwen3.5-35B-A3B"
+QWEN_VL_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
 
 SYSTEM_PROMPT = (
     "你是媒体剪辑助手，根据用户请求和输入媒体类型决定执行动作。"
     "只输出一个 JSON 对象，不要输出任何其他文字。JSON 结构："
-    '{"action":"image_edit|audio_edit|matting|enhance|asr|tts|image_to_video|reply","params":{},"reply":"给用户的简短中文回复"}。'
-    "图片输入时 action 可选 image_edit/matting/enhance/image_to_video，"
+    '{"action":"image_understand|image_edit|audio_edit|matting|enhance|asr|tts|image_to_video|reply","params":{},"reply":"给用户的简短中文回复"}。'
+    "图片输入时 action 可选 image_understand/image_edit/matting/enhance/image_to_video，"
+    "若用户是在询问图片内容（如：这是什么/图里有什么/描述一下/识别图中文字/帮我看看），action 必须用 image_understand，params 留空，reply 简短说明已识别。"
     "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss/cinematic/invert/sepia/warm/cool/pixelate/vignette/contrast/sketch/cartoon/flip)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
     "watermark.position 可为 'center'/'top-left'/'top-right'/'bottom-left'/'bottom-right' 或 [x,y] 坐标。"
     "image_to_video params 支持 duration(秒)，将图片生成为指定时长的视频。"
     "音频输入时 action 可选 audio_edit/asr，"
     "音频编辑 params 支持 crop(start,end)、volume(gain)、output_format(mp3/wav/aac)。"
     "只有文字时可用 reply 直接回答，或用 tts 将文字转为语音。"
+    "当输入中包含『图片内容：』字段时，它是对用户上传图片的视觉理解结果，你应该基于图片实际内容理解用户意图并选择最合适的动作（例如图片是人物照片且用户要复古风格，就执行 sepia 复古滤镜；用户询问图中人物外貌则用 image_understand 回答）。"
     "重要限制：你只能在用户上传的素材上做上述剪辑操作，无法凭空生成、添加或修改图中不存在的物体/人物/服装/文字，也不能换脸、换装或按描述生成新图片内容。"
     "若用户请求的内容超出可执行范围（例如要求在图中添加特定物品、换装、生成新图像），action 必须用 reply，并清楚回复："
-    "『我只能对您上传的图片/音频执行剪辑：滤镜（复古/黑白/电影/素描等16种）、加水印、裁剪缩放、转换格式、抠图、画质增强、语音识别/合成、图生视频等。"
+    "『我只能对您上传的图片/音频执行剪辑：滤镜（复古/黑白/电影/素描等16种）、加水印、裁剪缩放、转换格式、抠图、画质增强、语音识别/合成、图生视频、图片内容识别等。"
     "无法在图中凭空添加或生成不存在的内容（如给人物穿衣服、添加物品）。请上传要处理的素材，并告诉我具体想做的剪辑效果，例如给图片加复古滤镜、右上角加水印。』"
     "注意：不要在回复中称自己能做到上述之外的生成能力。"
 )
+
+
+def _image_mime(image_path: str) -> str:
+    ext = os.path.splitext(image_path)[1].lower()
+    return {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".bmp": "image/bmp",
+    }.get(ext, "image/png")
+
+
+def _image_caption(image_path: str) -> str | None:
+    token = get_modelscope_token()
+    if not token or not os.path.exists(image_path):
+        return None
+    try:
+        with open(image_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        payload = {
+            "model": QWEN_VL_MODEL,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:{_image_mime(image_path)};base64,{b64}"}},
+                        {
+                            "type": "text",
+                            "text": "请用一两句中文简洁描述这张图片的内容：主体、场景、人物外貌、画面色彩等，若有清晰文字请一并念出，控制在60字内。",
+                        },
+                    ],
+                }
+            ],
+            "temperature": 0.2,
+            "max_tokens": 300,
+        }
+        resp = httpx.post(
+            MODELSCOPE_CHAT_URL,
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=90,
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"].strip()[:300]
+    except Exception:
+        return None
 
 
 def chat_completion(messages: list[dict]) -> str:
@@ -53,8 +104,10 @@ def chat_completion(messages: list[dict]) -> str:
         raise RuntimeError("unexpected LLM response")
 
 
-def parse_with_llm(text: str, media_kind: str) -> dict | None:
+def parse_with_llm(text: str, media_kind: str, caption: str | None = None) -> dict | None:
     user = f"用户请求：{text}\n输入媒体类型：{media_kind or '无'}"
+    if caption:
+        user = f"图片内容：{caption}\n{user}"
     try:
         content = chat_completion([{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}])
     except Exception:
@@ -67,7 +120,17 @@ def parse_with_llm(text: str, media_kind: str) -> dict | None:
     except json.JSONDecodeError:
         return None
     action = intent.get("action")
-    if action not in ("image_edit", "audio_edit", "matting", "enhance", "asr", "tts", "image_to_video", "reply"):
+    if action not in (
+        "image_understand",
+        "image_edit",
+        "audio_edit",
+        "matting",
+        "enhance",
+        "asr",
+        "tts",
+        "image_to_video",
+        "reply",
+    ):
         return None
     params = intent.get("params") or {}
     return {"action": action, "params": params, "reply": intent.get("reply", "")}
@@ -77,6 +140,12 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
     t = text.strip()
     reply = ""
     if media_kind == "image":
+        if re.search(
+            r"这是什么|那是什么|图里(有|是|有什)|图片里(有|是)|图中(有|是|是什)|上面(是|有|画)|"
+            r"描述|介绍一下|帮我看看|看看这张|这张图是|图片内容|识别|认识一下|讲一讲|帮我分析",
+            t,
+        ):
+            return {"action": "image_understand", "params": {}, "reply": "已识别图片内容"}
         if re.search(r"视频|动画|动图", t):
             m = re.search(r"(\d+)\s*秒", t)
             duration = int(m.group(1)) if m else 5
@@ -185,8 +254,8 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
     return {"action": "reply", "params": {}, "reply": "我可以帮你剪辑图片和音频、识别语音、合成语音。可以发一张图片或一段音频，告诉我你的需求。"}
 
 
-def _resolve_intent(text: str, media_kind: str) -> dict:
-    intent = parse_with_llm(text, media_kind)
+def _resolve_intent(text: str, media_kind: str, caption: str | None = None) -> dict:
+    intent = parse_with_llm(text, media_kind, caption)
     if intent is not None:
         return intent
     return parse_with_rules(text, media_kind)
@@ -214,10 +283,21 @@ def run_chat(params: dict, task_dir: str) -> dict:
     if not combined:
         return {"kind": "text", "text": "没有收到有效的文字或语音指令。", "filename": None}
 
-    intent = _resolve_intent(combined, media_kind)
+    caption = None
+    if media_kind == "image" and media_path and os.path.exists(media_path):
+        caption = _image_caption(media_path)
+
+    intent = _resolve_intent(combined, media_kind, caption)
     action = intent["action"]
     reply = intent.get("reply") or ""
     iparams = intent.get("params") or {}
+
+    if action == "image_understand":
+        if not media_path or not os.path.exists(media_path) or media_kind != "image":
+            return {"kind": "text", "text": "需要上传图片才能识别内容。", "filename": None}
+        if caption:
+            return {"kind": "text", "text": f"我看到了：{caption}", "filename": None}
+        return {"kind": "text", "text": "图片理解服务暂时不可用，请稍后再试或换一张图片。", "filename": None}
 
     if action == "reply":
         return {"kind": "text", "text": reply, "filename": None}
