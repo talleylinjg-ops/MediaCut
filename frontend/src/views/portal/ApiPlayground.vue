@@ -38,7 +38,7 @@
           :closable="false"
           show-icon
           style="margin-bottom: 12px"
-          title="该 Key 余额为 0，图片/音频剪辑将被拒绝（402）。请登录客户控制台充值后再使用：请在控制台输入金额并扫码支付，或联系平台管理员。"
+          title="该 Key 余额为 0，AI 剪辑将被拒绝（402）。请登录客户控制台充值后再使用：请在控制台输入金额并扫码支付，或联系平台管理员。"
         >
           <template #default>
             <el-button size="small" type="primary" plain style="margin-top: 8px" @click="goRecharge">去客户控制台充值</el-button>
@@ -65,117 +65,15 @@
           :title="keyInfoError"
         />
 
-        <el-tabs v-model="tab">
-          <el-tab-pane label="图片剪辑" name="image">
-            <div style="margin-bottom: 12px">
-              <el-button type="primary" plain @click="imgPicker.click()">导入源文件</el-button>
-              <span v-if="imgFile" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ imgFile.name }}</span>
-              <input ref="imgPicker" type="file" accept="image/*" style="display: none" @change="onImgPick" />
-            </div>
-            <el-alert
-              v-if="!keyInfo"
-              type="warning"
-              :closable="false"
-              show-icon
-              style="margin-bottom: 12px"
-              title="未保存有效 API Key：请先在顶部粘贴 API Key 并点【保存】，没有 Key 请点【申请】注册（新注册赠送 100 点）"
-            />
-            <el-form label-width="90px" style="max-width: 520px">
-              <el-form-item label="滤镜">
-                <el-select v-model="img.filter" style="width: 200px">
-                  <el-option label="无" value="" />
-                  <el-option label="灰度" value="gray" />
-                  <el-option label="模糊" value="blur" />
-                  <el-option label="锐化" value="sharpen" />
-                  <el-option label="边缘" value="edge" />
-                  <el-option label="浮雕" value="emboss" />
-                  <el-option label="电影色调" value="cinematic" />
-                  <el-option label="反色" value="invert" />
-                  <el-option label="棕褐复古" value="sepia" />
-                  <el-option label="暖色调" value="warm" />
-                  <el-option label="冷色调" value="cool" />
-                  <el-option label="马赛克" value="pixelate" />
-                  <el-option label="暗角" value="vignette" />
-                  <el-option label="高对比" value="contrast" />
-                  <el-option label="素描" value="sketch" />
-                  <el-option label="卡通" value="cartoon" />
-                  <el-option label="镜像" value="flip" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="缩放宽度">
-                <el-input-number v-model="img.width" :min="0" :max="4096" placeholder="0 表示不缩放" />
-              </el-form-item>
-              <el-form-item label="水印文本">
-                <el-input v-model="img.watermark" placeholder="留空不加水印" />
-              </el-form-item>
-              <el-form-item label="输出格式">
-                <el-select v-model="img.format" style="width: 200px">
-                  <el-option label="保持原格式" value="" />
-                  <el-option label="JPEG" value="jpeg" />
-                  <el-option label="PNG" value="png" />
-                  <el-option label="WEBP" value="webp" />
-                </el-select>
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" :disabled="!keyInfo" :loading="running" @click="runImage">开始剪辑</el-button>
-              </el-form-item>
-            </el-form>
-            <div v-if="imgResult">
-              <img :src="imgResult" style="max-width: 100%; max-height: 400px; border: 1px solid #e4e7ed" />
-              <div style="margin-top: 8px; display: flex; gap: 8px">
-                <el-button size="small" @click="viewResult(imgResult)">查看</el-button>
-                <el-button size="small" type="primary" plain @click="downloadResult(imgResult, 'edited-image.png')">下载</el-button>
-              </div>
-            </div>
-          </el-tab-pane>
-
-          <el-tab-pane label="音频剪辑" name="audio">
-            <div style="margin-bottom: 12px">
-              <el-button type="primary" plain @click="audPicker.click()">导入源文件</el-button>
-              <span v-if="audFile" style="margin-left: 12px; font-size: 13px; color: #67c23a">已导入：{{ audFile.name }}</span>
-              <input ref="audPicker" type="file" accept="audio/*" style="display: none" @change="onAudPick" />
-            </div>
-            <el-alert
-              v-if="!keyInfo"
-              type="warning"
-              :closable="false"
-              show-icon
-              style="margin-bottom: 12px"
-              title="未保存有效 API Key：请先在顶部粘贴 API Key 并点【保存】，没有 Key 请点【申请】注册（新注册赠送 100 点）"
-            />
-            <el-form label-width="90px" style="max-width: 520px">
-              <el-form-item label="裁剪起点 (s)">
-                <el-input-number v-model="aud.start" :min="0" :step="0.5" />
-              </el-form-item>
-              <el-form-item label="裁剪终点 (s)">
-                <el-input-number v-model="aud.end" :min="0" :step="0.5" placeholder="0 表示不裁剪" />
-              </el-form-item>
-              <el-form-item label="音量倍数">
-                <el-input-number v-model="aud.gain" :min="0" :max="10" :step="0.1" />
-              </el-form-item>
-              <el-form-item label="输出格式">
-                <el-select v-model="aud.format" style="width: 200px">
-                  <el-option label="保持原格式" value="" />
-                  <el-option label="MP3" value="mp3" />
-                  <el-option label="WAV" value="wav" />
-                  <el-option label="AAC" value="aac" />
-                </el-select>
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" :disabled="!keyInfo" :loading="running" @click="runAudio">开始剪辑</el-button>
-              </el-form-item>
-            </el-form>
-            <div v-if="audResult">
-              <audio :src="audResult" controls style="width: 100%" />
-              <div style="margin-top: 8px; display: flex; gap: 8px">
-                <el-button size="small" @click="viewResult(audResult)">查看</el-button>
-                <el-button size="small" type="primary" plain @click="downloadResult(audResult, 'edited-audio.wav')">下载</el-button>
-              </div>
-            </div>
-          </el-tab-pane>
-
-          <el-tab-pane label="AI 剪辑" name="chat">
-            <el-alert
+        <el-alert
+          v-if="!keyInfo"
+          type="warning"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+          title="未保存有效 API Key：请先在顶部粘贴 API Key 并点【保存】，没有 Key 请点【申请】注册（新注册赠送 100 点）"
+        />
+        <el-alert
               type="info"
               :closable="false"
               show-icon
@@ -239,35 +137,21 @@
             </div>
             <input ref="imageInput" type="file" accept="image/*" style="display: none" @change="onImage" />
             <input ref="mediaInput" type="file" accept="audio/*,image/*" style="display: none" @change="onMedia" />
-          </el-tab-pane>
-        </el-tabs>
       </el-card>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api'
 import PortalNav from '../../components/PortalNav.vue'
 
 const apiKey = ref(sessionStorage.getItem('api_key') || '')
-const tab = ref('image')
-const running = ref(false)
 const savingKey = ref(false)
 const keyInfo = ref(null)
 const keyInfoError = ref('')
-
-const imgPicker = ref(null)
-const imgFile = ref(null)
-const img = reactive({ filter: '', width: 0, watermark: '', format: '' })
-const imgResult = ref('')
-
-const audPicker = ref(null)
-const audFile = ref(null)
-const aud = reactive({ start: 0, end: 0, gain: 1, format: '' })
-const audResult = ref('')
 
 const chatText = ref('')
 const chatLoading = ref(false)
@@ -300,10 +184,6 @@ onMounted(async () => {
   if (k) {
     apiKey.value = k
     await validateKey(true)
-  }
-  const q = new URLSearchParams(location.search).get('tab')
-  if (['image', 'audio', 'chat'].includes(q)) {
-    tab.value = q
   }
 })
 
@@ -409,18 +289,6 @@ async function saveKey() {
   }
 }
 
-function onImgPick(e) {
-  const f = e.target.files[0]
-  if (f) imgFile.value = f
-  e.target.value = ''
-}
-
-function onAudPick(e) {
-  const f = e.target.files[0]
-  if (f) audFile.value = f
-  e.target.value = ''
-}
-
 function viewResult(url) {
   window.open(url, '_blank')
 }
@@ -432,73 +300,6 @@ function downloadResult(url, name) {
   document.body.appendChild(a)
   a.click()
   a.remove()
-}
-
-function buildParams() {
-  const params = {}
-  if (img.filter) params.filter = img.filter
-  if (img.width > 0) params.resize = { width: img.width }
-  if (img.watermark) params.watermark = { text: img.watermark, position: [20, 20], size: 32, color: [255, 255, 255] }
-  if (img.format) params.output_format = img.format
-  return params
-}
-
-async function runImage() {
-  if (!apiKey.value) return ElMessage.warning('请先填写并保存 API Key')
-  if (!imgFile.value) return ElMessage.warning('请先导入源文件')
-  running.value = true
-  imgResult.value = ''
-  try {
-    const form = new FormData()
-    form.append('file', imgFile.value)
-    form.append('params', JSON.stringify(buildParams()))
-    const resp = await http.post('/image/edit', form, {
-      headers: { Authorization: `Bearer ${apiKey.value}` },
-      responseType: 'blob'
-    })
-    const blob = resp.data
-    if (blob && blob.type && blob.type.startsWith('image/')) {
-      imgResult.value = URL.createObjectURL(blob)
-    } else {
-      const txt = blob instanceof Blob ? await blob.text() : ''
-      ElMessage.error(txt ? '返回异常：' + txt : '接口未返回图片，请重试')
-    }
-  } catch (e) {
-    ElMessage.error((await readErr(e)) || '处理失败')
-  } finally {
-    running.value = false
-  }
-}
-
-async function runAudio() {
-  if (!apiKey.value) return ElMessage.warning('请先填写并保存 API Key')
-  if (!audFile.value) return ElMessage.warning('请先导入源文件')
-  running.value = true
-  try {
-    const params = {}
-    if (aud.end > aud.start) params.crop = { start: aud.start, end: aud.end }
-    if (aud.gain && aud.gain !== 1) params.volume = { gain: aud.gain }
-    if (aud.format) params.output_format = aud.format
-    const form = new FormData()
-    form.append('file', audFile.value)
-    form.append('params', JSON.stringify(params))
-    audResult.value = ''
-    const resp = await http.post('/audio/edit', form, {
-      headers: { Authorization: `Bearer ${apiKey.value}` },
-      responseType: 'blob'
-    })
-    const blob = resp.data
-    if (blob && blob.type && blob.type.startsWith('audio/')) {
-      audResult.value = URL.createObjectURL(blob)
-    } else {
-      const txt = blob instanceof Blob ? await blob.text() : ''
-      ElMessage.error(txt ? '返回异常：' + txt : '接口未返回音频，请重试')
-    }
-  } catch (e) {
-    ElMessage.error((await readErr(e)) || '处理失败')
-  } finally {
-    running.value = false
-  }
 }
 
 async function toggleRecord() {
