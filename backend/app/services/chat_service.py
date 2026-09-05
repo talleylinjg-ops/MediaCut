@@ -21,7 +21,7 @@ SYSTEM_PROMPT = (
     "若用户是在询问图片内容（如：这是什么/图里有什么/描述一下/识别图中文字/帮我看看），action 必须用 image_understand，params 留空，reply 简短说明已识别。"
     "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss/cinematic/invert/sepia/warm/cool/pixelate/vignette/contrast/sketch/cartoon/flip)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
     "watermark.position 可为 'center'/'top-left'/'top-right'/'bottom-left'/'bottom-right' 或 [x,y] 坐标。"
-    "image_to_video params 支持 duration(秒)，将图片生成为指定时长的视频。"
+    "image_to_video params 支持 duration(秒)，将图片生成为指定时长的视频，默认带缓慢推镜放大运镜（画面逐渐推进），这是运镜效果而非 AI 动作生成。"
     "音频输入时 action 可选 audio_edit/asr，"
     "音频编辑 params 支持 crop(start,end)、volume(gain)、output_format(mp3/wav/aac)。"
     "只有文字时可用 reply 直接回答，或用 tts 将文字转为语音。"
@@ -152,7 +152,7 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
             return {
                 "action": "image_to_video",
                 "params": {"duration": duration},
-                "reply": f"正在将图片生成为 {duration} 秒视频",
+                "reply": f"正在将图片生成为 {duration} 秒带缓慢推镜运镜的视频",
             }
         params = {}
         if re.search(r"灰度|黑白", t):
