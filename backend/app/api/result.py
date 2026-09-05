@@ -19,6 +19,7 @@ MIME_MAP = {
     ".wav": "audio/wav",
     ".mp3": "audio/mpeg",
     ".txt": "text/plain",
+    ".mp4": "video/mp4",
 }
 
 

@@ -376,13 +376,13 @@ async function sendChat() {
     if (at?.type === 'voice') form.append('voice', at.file)
     if (at?.type === 'media') form.append('media', at.file)
     const headers = { Authorization: `Bearer ${apiKey.value}` }
-    const submit = await http.post('/ai/chat', form, { headers })
+    const submit = await http.post('/ai/chat', form, { headers, timeout: 180000 })
     const taskId = submit.data.task_id
 
     let out = null
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 420; i++) {
       await new Promise((r) => setTimeout(r, 1000))
-      const poll = await http.get(`/tasks/${taskId}`, { headers })
+      const poll = await http.get(`/tasks/${taskId}`, { headers, timeout: 20000 })
       if (poll.data.status === 'succeeded') {
         out = poll.data
         break
@@ -396,7 +396,7 @@ async function sendChat() {
       }
     }
     if (!out) {
-      messages.value.push({ role: 'assistant', text: '处理超时，请稍后在控制台查看' })
+      messages.value.push({ role: 'assistant', text: '处理仍在进行中，结果会保留，可在稍后刷新后查看控制台任务记录' })
       chatLoading.value = false
       chatText.value = ''
       scrollDown()
@@ -406,14 +406,20 @@ async function sendChat() {
     const msg = { role: 'assistant', text: out.result_text || '处理完成' }
     if (out.result_url) {
       const name = out.result_url.split('/').pop()
-      const fileResp = await http.get(`/result/${taskId}/${name}`, { headers, responseType: 'blob' })
+      const fileResp = await http.get(`/result/${taskId}/${name}`, { headers, responseType: 'blob', timeout: 240000 })
       msg.kind = out.result_kind
       msg.fname = name
       msg.url = URL.createObjectURL(fileResp.data)
     }
     messages.value.push(msg)
   } catch (e) {
-    messages.value.push({ role: 'assistant', text: '提交失败：' + (e.response?.data?.detail || e.message || '未知错误') })
+    const timedOut = e?.code === 'ECONNABORTED' || /timeout/i.test(e?.message || '')
+    messages.value.push({
+      role: 'assistant',
+      text: timedOut
+        ? '请求等待超时（长视频/大文件处理较慢）。任务仍在后台执行，可稍后在任务控制台查看结果，或改用较短视频时长。'
+        : '提交失败：' + (e.response?.data?.detail || e.message || '未知错误')
+    })
   } finally {
     chatLoading.value = false
     chatText.value = ''
