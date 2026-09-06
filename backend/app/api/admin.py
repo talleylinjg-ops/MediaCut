@@ -24,6 +24,7 @@ from app.schemas import (
     AdminToken,
     ConfigOut,
     ConfigUpdate,
+    CreditPayload,
     DashboardOut,
     DeveloperOut,
     DeveloperUpdate,
@@ -126,6 +127,30 @@ def update_developer(developer_id: int, payload: DeveloperUpdate, db: Session = 
         if payload.recharge_yuan < 0:
             raise HTTPException(status_code=400, detail="invalid recharge amount")
         developer.balance += int(round(payload.recharge_yuan * payment_service.POINTS_PER_YUAN))
+    db.commit()
+    db.refresh(developer)
+    return developer
+
+
+@router.post("/developers/{developer_id}/credit", response_model=DeveloperOut, dependencies=[Depends(require_admin)])
+def admin_credit_developer(developer_id: int, payload: CreditPayload, db: Session = Depends(get_db)):
+    developer = db.get(Developer, developer_id)
+    if developer is None:
+        raise HTTPException(status_code=404, detail="developer not found")
+    points = payload.points
+    if points == 0:
+        raise HTTPException(status_code=400, detail="调节点数不能为 0")
+    if points < 0 and developer.balance + points < 0:
+        raise HTTPException(status_code=400, detail=f"点数不足，当前仅 {developer.balance} 点，最多可扣 {developer.balance} 点")
+    developer.balance += points
+    db.add(
+        ApiCallLog(
+            developer_id=developer.id,
+            endpoint="/api/v1/admin/developers/{id}/credit",
+            status_code=200,
+            cost=points,
+        )
+    )
     db.commit()
     db.refresh(developer)
     return developer

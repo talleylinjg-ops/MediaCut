@@ -39,6 +39,10 @@ class DeveloperUpdate(BaseModel):
     recharge_yuan: Optional[float] = None
 
 
+class CreditPayload(BaseModel):
+    points: int
+
+
 class TaskOut(BaseModel):
     task_id: str
     task_type: str
