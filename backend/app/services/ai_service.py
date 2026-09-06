@@ -60,11 +60,26 @@ def run_enhance(input_path: str, output_dir: str) -> str:
     return _save_pil_image(image, output_dir)
 
 
+_whisper_model = None
+
+
+def _get_whisper():
+    global _whisper_model
+    if _whisper_model is None:
+        from faster_whisper import WhisperModel
+
+        size = os.getenv("WHISPER_MODEL", "small")
+        _whisper_model = WhisperModel(size, device="cpu", compute_type="int8")
+    return _whisper_model
+
+
 def run_asr(input_path: str, output_dir: str) -> dict:
-    wav_path = _ensure_wav(input_path, output_dir)
-    pipe = _get_pipeline("asr")
-    result = pipe(wav_path)
-    text = result.get("text") if isinstance(result, dict) else str(result)
+    try:
+        segments, _ = _get_whisper().transcribe(input_path, beam_size=5)
+    except Exception:
+        wav_path = _ensure_wav(input_path, output_dir)
+        segments, _ = _get_whisper().transcribe(wav_path, beam_size=5)
+    text = "".join(seg.text for seg in segments).strip()
     filename = f"result_{uuid.uuid4().hex}.txt"
     with open(os.path.join(output_dir, filename), "w", encoding="utf-8") as f:
         f.write(text)
