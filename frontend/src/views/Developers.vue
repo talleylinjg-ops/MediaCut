@@ -4,7 +4,7 @@
       <el-table :data="developers" v-loading="loading">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="name" label="名称" width="100" />
-        <el-table-column prop="email" label="邮箱" width="220" show-overflow-tooltip />
+        <el-table-column prop="email" label="邮箱" width="150" show-overflow-tooltip />
         <el-table-column label="API Key" width="220">
           <template #default="{ row }">
             <code style="word-break: break-all">{{ row.api_key || '（无）' }}</code>

@@ -57,7 +57,9 @@ async def spa_fallback(request: Request, exc: HTTPException):
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
     index_file = os.path.join(FRONTEND_DIST, "index.html")
     if os.path.exists(index_file):
-        return FileResponse(index_file)
+        resp = FileResponse(index_file)
+        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return resp
     return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 
