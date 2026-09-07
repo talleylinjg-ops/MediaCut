@@ -3,7 +3,7 @@
     <div class="account-hero">
       <div>
         <h3 class="page-title">账号中心</h3>
-        <p class="page-sub">管理管理员账号、ModelScope AI 服务与支付渠道配置</p>
+        <p class="page-sub">管理管理员账号、云端模型 Token（可选）与支付渠道配置</p>
       </div>
       <div class="hero-right">
         <span class="hero-label">当前级别</span>
@@ -67,13 +67,13 @@
 
         <el-col :xs="24" :md="12">
           <el-card class="tcard" shadow="hover" style="height: 100%">
-            <template #header><span class="tcard-header">ModelScope AI 配置</span></template>
+            <template #header><span class="tcard-header">ModelScope 云端 API（可选）</span></template>
             <el-alert
-              type="info"
+              type="success"
               :closable="false"
               show-icon
               style="margin-bottom: 16px"
-              title="在 modelscope.cn 注册后，点击右上角头像 → 访问令牌 获取。填好后 AI 抠图/增强/ASR/TTS 即可使用。"
+              title="内置 AI 能力（AI 抠图 / 画质增强 / 语音识别 / 语音合成）已全部本地免费运行，无需任何 Token。仅在需要调用 ModelScope 云端大模型 API 时才需填写下方 Token。"
             />
             <el-form label-width="110px" class="account-form" @submit.prevent>
               <el-form-item label="API Token">
@@ -85,11 +85,11 @@
                 />
               </el-form-item>
               <el-form-item label="当前状态">
-                <el-tag :type="configured ? 'success' : 'danger'">
-                  {{ configured ? '已配置' : '未配置（AI 接口返回 503）' }}
+                <el-tag :type="configured ? 'success' : 'info'">
+                  {{ configured ? '已配置云端 Token' : '本地免费模式（无需 Token）' }}
                 </el-tag>
               </el-form-item>
-              <el-form-item label="使用的模型">
+              <el-form-item v-if="Object.keys(cfg.models).length" label="使用的模型">
                 <div class="model-list">
                   <div v-for="(m, k) in cfg.models" :key="k" class="model-row">
                     <span class="model-name">{{ k }}</span>

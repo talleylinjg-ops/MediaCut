@@ -10,12 +10,6 @@ os.makedirs(RESULT_DIR, exist_ok=True)
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'media.db')}")
 
 MODELSCOPE_API_TOKEN = os.getenv("MODELSCOPE_API_TOKEN", "")
-MODELSCOPE_MODELS = {
-    "matting": os.getenv("MODELSCOPE_MATTING_MODEL", "damo/cv_unet_image-matting"),
-    "enhance": os.getenv("MODELSCOPE_ENHANCE_MODEL", "damo/cv_dfdnet_image_enhance"),
-    "asr": os.getenv("MODELSCOPE_ASR_MODEL", "damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch"),
-    "tts": os.getenv("MODELSCOPE_TTS_MODEL", "damo/speech_sambert-hifigan_tts_zh-cn_16k"),
-}
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")

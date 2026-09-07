@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from app.config import MODELSCOPE_MODELS
 from app.core import settings
 from app.core.security import (
     admin_password_matches,
@@ -83,7 +82,7 @@ def get_config():
     return ConfigOut(
         admin_username=settings.get_admin_username() or "admin",
         modelscope_configured=bool(settings.get_modelscope_token()),
-        models=MODELSCOPE_MODELS,
+        models={},
         alipay_configured=bool(settings.get_pay_config("pay_alipay_appid")),
         wechat_configured=bool(settings.get_pay_config("pay_wechat_mchid")),
     )

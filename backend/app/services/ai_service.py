@@ -3,12 +3,9 @@ import os
 import subprocess
 import uuid
 
+import numpy as np
+
 from fastapi import HTTPException
-
-from app.config import MODELSCOPE_MODELS
-from app.core.settings import get_modelscope_token
-
-_pipelines = {}
 
 TASK_TYPES = {"matting", "enhance", "asr", "tts"}
 
@@ -24,40 +21,43 @@ def _ensure_wav(input_path: str, output_dir: str) -> str:
     return wav_path
 
 
-def _get_pipeline(task_type: str):
-    token = get_modelscope_token()
-    if not token:
-        raise HTTPException(
-            status_code=503,
-            detail="AI service unavailable: MODELSCOPE_API_TOKEN not configured",
-        )
-    os.environ["MODELSCOPE_API_TOKEN"] = token
-    if task_type not in _pipelines:
-        from modelscope import pipeline
-
-        _pipelines[task_type] = pipeline(task_type, model=MODELSCOPE_MODELS[task_type])
-    return _pipelines[task_type]
+_matting_session = None
 
 
-def _save_pil_image(image, output_dir: str) -> str:
-    filename = f"result_{uuid.uuid4().hex}.png"
-    path = os.path.join(output_dir, filename)
-    image.save(path)
-    return filename
+def _get_matting_session():
+    global _matting_session
+    if _matting_session is None:
+        from rembg import new_session
+
+        _matting_session = new_session("u2net")
+    return _matting_session
 
 
 def run_matting(input_path: str, output_dir: str) -> str:
-    pipe = _get_pipeline("matting")
-    result = pipe(input_path)
-    image = result.get("output_img") if isinstance(result, dict) else result
-    return _save_pil_image(image, output_dir)
+    from rembg import remove
+
+    with open(input_path, "rb") as f:
+        data = remove(f.read(), session=_get_matting_session())
+    filename = f"result_{uuid.uuid4().hex}.png"
+    with open(os.path.join(output_dir, filename), "wb") as f:
+        f.write(data)
+    return filename
 
 
 def run_enhance(input_path: str, output_dir: str) -> str:
-    pipe = _get_pipeline("enhance")
-    result = pipe(input_path)
-    image = result.get("output_img") if isinstance(result, dict) else result
-    return _save_pil_image(image, output_dir)
+    import cv2
+
+    img = cv2.imread(input_path)
+    if img is None:
+        raise HTTPException(status_code=400, detail="unable to read image for enhance")
+    denoised = cv2.fastNlMeansDenoisingColored(img, None, 3, 3, 7, 21)
+    enhanced = cv2.detailEnhance(denoised, sigma_s=10, sigma_r=0.15)
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], dtype=np.float32)
+    sharpened = cv2.filter2D(enhanced, -1, kernel)
+    filename = f"result_{uuid.uuid4().hex}.png"
+    path = os.path.join(output_dir, filename)
+    cv2.imwrite(path, sharpened)
+    return filename
 
 
 _whisper_model = None
@@ -87,11 +87,19 @@ def run_asr(input_path: str, output_dir: str) -> dict:
 
 
 def run_tts(text: str, output_dir: str) -> str:
-    pipe = _get_pipeline("tts")
-    result = pipe(text)
-    output = result.get("output") if isinstance(result, dict) else result
-    filename = f"result_{uuid.uuid4().hex}.wav"
-    output.save(os.path.join(output_dir, filename))
+    import asyncio
+
+    import edge_tts
+
+    voice = os.getenv("TTS_VOICE", "zh-CN-XiaoxiaoNeural")
+    filename = f"result_{uuid.uuid4().hex}.mp3"
+    path = os.path.join(output_dir, filename)
+
+    async def _synthesize():
+        communicator = edge_tts.Communicate(text, voice)
+        await communicator.save(path)
+
+    asyncio.run(_synthesize())
     return filename
 
 
