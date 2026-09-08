@@ -43,11 +43,18 @@ def image_to_video(image_path: str, duration: int, output_dir: str, motion: str 
     with Image.open(image_path) as im:
         im.convert("RGB").resize((ow * 4, oh * 4), Image.LANCZOS).save(tmp_up, "JPEG", quality=92)
 
-    zoom = f"1+0.25*on/{total_frames}"
-    vf = (
-        f"zoompan=z='{zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
-        f":d={total_frames}:s={ow}x{oh}:fps=25,format=yuv420p"
-    )
+    if motion == "pan":
+        zoom = f"1+0.10*on/{total_frames}"
+        vf = (
+            f"zoompan=z='{zoom}':x='(iw-iw/zoom)*(on/{total_frames})':y='ih/2-(ih/zoom/2)'"
+            f":d={total_frames}:s={ow}x{oh}:fps=25,format=yuv420p"
+        )
+    else:
+        zoom = f"1+0.25*on/{total_frames}"
+        vf = (
+            f"zoompan=z='{zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+            f":d={total_frames}:s={ow}x{oh}:fps=25,format=yuv420p"
+        )
     cmd = [
         "ffmpeg", "-y", "-i", tmp_up,
         "-vf", vf,

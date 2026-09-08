@@ -21,15 +21,15 @@ SYSTEM_PROMPT = (
     "若用户是在询问图片内容（如：这是什么/图里有什么/描述一下/识别图中文字/帮我看看），action 必须用 image_understand，params 留空，reply 简短说明已识别。"
     "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss/cinematic/invert/sepia/warm/cool/pixelate/vignette/contrast/sketch/cartoon/flip)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
     "watermark.position 可为 'center'/'top-left'/'top-right'/'bottom-left'/'bottom-right' 或 [x,y] 坐标。"
-    "image_to_video params 支持 duration(秒)，将图片生成为指定时长的视频，默认带缓慢推镜放大运镜（画面逐渐推进），这是运镜效果而非 AI 动作生成。"
+    "image_to_video params 支持 duration(秒)、motion(zoom/pan)，基于已上传图片生成镜头运镜视频：zoom 为缓慢推进，pan 为横向平移（适合驰骋/行驶/公路等有方向感的表达）。注意：这只是镜头推拉/平移，画面内容本身不会运动。"
     "音频输入时 action 可选 audio_edit/asr，"
     "音频编辑 params 支持 crop(start,end)、volume(gain)、output_format(mp3/wav/aac)。"
     "只有文字时可用 reply 直接回答，或用 tts 将文字转为语音。"
+    "重要：只要用户上传了图片并提出视频/动画/动态相关请求（如：生成视频、做成动态、动起来、驰骋、飞驰、行驶、平移运镜），action 一律用 image_to_video（可带图自动生成运镜），绝对不要用 reply 拒绝或误判为图片内容修改。reply 只需简短告知正在生成视频。"
     "文生图：仅当用户没有上传图片、且明确要求生成一张全新的图（例如：生成一张/画一张/帮我画/设计 logo/海报/封面/插画/头像/壁纸/背景图，或描述一个不存在于任何素材的画面）时，action 用 t2i，params 写 {\"prompt\":\"保留用户主体、风格、构图、画面细节的完整生成描述\"}。"
     "当输入中包含『图片内容：』字段时，它是对用户上传图片的视觉理解结果，你应该基于图片实际内容理解用户意图并选择最合适的动作（例如图片是人物照片且用户要复古风格，就执行 sepia 复古滤镜；用户询问图中人物外貌则用 image_understand 回答）。"
-    "重要限制：对于已上传的图片，你只能做滤镜/抠图/画质增强/水印/裁剪/缩放/转格式等剪辑操作；无法对图中人物换装、修改面部、凭空添加或删除图中物体。"
-    "若用户对已上传图片提出这类内容修改（换装、换脸、添加/删除物体、改文字），action 必须用 reply，并回复："
-    "『我只能对已上传图片做剪辑（滤镜/抠图/增强/水印/裁剪/转格式），无法直接修改图中的人物、服装或物体。想要全新画面，请直接一句话描述想要的画面内容（不要再传图），我可以为你生成一张新图。』"
+    "重要限制：对于已上传的图片，你只能做滤镜/抠图/画质增强/水印/裁剪/缩放/转格式/镜头运镜视频等操作；无法对图中人物换装、修改面部、凭空添加或删除图中物体，也无法让画面内容真正运动（如让车开起来、让动作发生）。"
+    "若用户对已上传图片提出内容级修改（换装、换脸、添加/删除物体、改文字，或要求画面内容真正动起来/车跑起来等视频生成类需求），action 必须用 reply，如实说明：镜头运镜视频可以生成（会直接生成），但让画面内容真实运动/换装等生成式能力暂未接入。"
     "若用户没有上传图片且直接提出生成/换装/凭空绘制需求，一律使用 t2i 生成全新图片，不要使用 reply 拒绝。"
 )
 
@@ -147,13 +147,16 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
             t,
         ):
             return {"action": "image_understand", "params": {}, "reply": "已识别图片内容"}
-        if re.search(r"视频|动画|动图", t):
+        if re.search(r"视频|动画|动图|动起来|动态|飞驰|驰骋|行驶|漂移|平移|运镜|推镜|拉远|放大效果", t):
             m = re.search(r"(\d+)\s*秒", t)
             duration = int(m.group(1)) if m else 5
+            params = {"duration": duration}
+            if re.search(r"驰骋|行驶|平移|横向|扫过|公路|拉风|飞驰|移动", t):
+                params["motion"] = "pan"
             return {
                 "action": "image_to_video",
-                "params": {"duration": duration},
-                "reply": f"正在将图片生成为 {duration} 秒带缓慢推镜运镜的视频",
+                "params": params,
+                "reply": f"正在基于图片生成 {duration} 秒镜头运镜视频",
             }
         params = {}
         if re.search(r"灰度|黑白", t):
@@ -340,8 +343,16 @@ def run_chat(params: dict, task_dir: str) -> dict:
         if media_kind != "image":
             return {"kind": "text", "text": "视频生成需要图片输入。", "filename": None}
         duration = int(iparams.get("duration") or 5)
-        filename = video_service.image_to_video(media_path, duration, task_dir)
-        return {"kind": "video", "text": reply or "视频已生成", "filename": filename}
+        motion = iparams.get("motion")
+        if motion not in ("zoom", "pan"):
+            motion = "pan" if re.search(r"驰骋|行驶|平移|横向|扫|公路|飞驰|移动|漂移", combined) else "zoom"
+        filename = video_service.image_to_video(media_path, duration, task_dir, motion=motion)
+        note = "（横向运镜）" if motion == "pan" else "（推进运镜）"
+        return {
+            "kind": "video",
+            "text": f"已生成 {duration} 秒镜头运镜视频{note}。说明：这是镜头推拉/平移的运镜效果，画面中的车不会真的开动；真正的图生视频内容生成暂未接入。",
+            "filename": filename,
+        }
 
     if action == "asr":
         if not media_path or not os.path.exists(media_path):
