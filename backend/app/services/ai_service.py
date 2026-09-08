@@ -103,6 +103,104 @@ def run_tts(text: str, output_dir: str) -> str:
     return filename
 
 
+POLLINATIONS_IMG_URL = "https://image.pollinations.ai/prompt/{prompt}"
+MODELSCOPE_T2I_URL = "https://api-inference.modelscope.cn/v1/images/generations"
+T2I_MODEL = "Qwen/Qwen-Image"
+
+_T2I_BLOCKED_KEYWORDS = (
+    "裸体",
+    "nude",
+    "露点",
+    "性交",
+    "色情",
+    "porn",
+    "儿童色情",
+    "暴力血腥",
+    "自残",
+    "自杀教程",
+    "制作炸弹",
+)
+
+
+def _is_safe_t2i_prompt(prompt: str) -> bool:
+    low = prompt.lower()
+    return not any(kw in low for kw in _T2I_BLOCKED_KEYWORDS)
+
+
+def _save_image_bytes(data: bytes, output_dir: str) -> str:
+    from io import BytesIO
+
+    from PIL import Image
+
+    img = Image.open(BytesIO(data))
+    if img.mode in ("RGBA", "LA", "P"):
+        img = img.convert("RGBA")
+        background = Image.new("RGB", img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[-1])
+        img = background
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+    filename = f"result_{uuid.uuid4().hex}.png"
+    img.save(os.path.join(output_dir, filename))
+    return filename
+
+
+def _t2i_pollinations(prompt: str, width: int, height: int) -> bytes:
+    import httpx
+
+    from urllib.parse import quote
+
+    url = POLLINATIONS_IMG_URL.format(prompt=quote(prompt))
+    resp = httpx.get(
+        url,
+        params={"width": width, "height": height, "nologo": "true", "seed": uuid.uuid4().int % (2**31)},
+        timeout=90,
+        follow_redirects=True,
+    )
+    resp.raise_for_status()
+    return resp.content
+
+
+def _t2i_modelscope(prompt: str, width: int, height: int) -> bytes:
+    import base64
+    import httpx
+
+    from app.core.settings import get_modelscope_token
+
+    token = get_modelscope_token()
+    if not token:
+        raise HTTPException(
+            status_code=503,
+            detail="图像生成服务暂不可用：免费生成源连接失败，且未配置 ModelScope Token（可在管理后台可选填写）",
+        )
+    payload = {"model": T2I_MODEL, "prompt": prompt, "size": f"{width}x{height}"}
+    resp = httpx.post(
+        MODELSCOPE_T2I_URL,
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    item = resp.json()["data"][0]
+    if item.get("b64_json"):
+        return base64.b64decode(item["b64_json"])
+    image_resp = httpx.get(item["url"], timeout=120, follow_redirects=True)
+    image_resp.raise_for_status()
+    return image_resp.content
+
+
+def run_t2i(prompt: str, output_dir: str, width: int = 1024, height: int = 1024) -> str:
+    if not prompt or not prompt.strip():
+        raise HTTPException(status_code=400, detail="生成图片需要描述内容")
+    if not _is_safe_t2i_prompt(prompt):
+        raise HTTPException(status_code=400, detail="该描述包含不允许生成的内容，请调整后重试")
+    try:
+        data = _t2i_pollinations(prompt, width, height)
+    except Exception:
+        data = _t2i_modelscope(prompt, width, height)
+    return _save_image_bytes(data, output_dir)
+
+
 def run_ai_task(task_type: str, params: dict, output_dir: str) -> dict:
     if task_type not in TASK_TYPES:
         raise HTTPException(status_code=400, detail=f"unsupported task type: {task_type}")
