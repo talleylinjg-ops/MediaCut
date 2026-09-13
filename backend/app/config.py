@@ -1,6 +1,15 @@
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+except ImportError:
+    pass
+
 STORAGE_DIR = os.path.join(BASE_DIR, "storage")
 UPLOAD_DIR = os.path.join(STORAGE_DIR, "uploads")
 RESULT_DIR = os.path.join(STORAGE_DIR, "results")

@@ -1,4 +1,5 @@
 import os
+import logging
 
 from contextlib import asynccontextmanager
 
@@ -10,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import models
 from app.api import admin, ai, audio, dev, image, pay, result, tasks
+from app.config import ADMIN_PASSWORD, JWT_SECRET
 from app.core import billing
 from app.core.security import hash_api_key
 from app.database import Base, SessionLocal, engine
@@ -26,6 +28,11 @@ SPA_EXCLUDED_PREFIXES = ("/api/", "/docs", "/redoc", "/openapi.json", "/static",
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    if JWT_SECRET.startswith("change-me") or ADMIN_PASSWORD == "admin123":
+        logging.getLogger("uvicorn.error").warning(
+            "安全提示：正在使用默认管理员密码或 JWT 密钥，正式部署请在 .env 中修改 "
+            "ADMIN_PASSWORD 与 JWT_SECRET"
+        )
     yield
 
 
@@ -45,7 +52,11 @@ if os.path.isdir(FRONTEND_DIST):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        origin.strip()
+        for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",")
+        if origin.strip()
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )

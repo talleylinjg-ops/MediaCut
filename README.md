@@ -40,6 +40,37 @@ bash start.sh
 - Swagger 文档：http://localhost:8000/docs （前端入口 http://localhost:8000/swagger）
 - 健康检查：http://localhost:8000/health
 
+## 生产部署（Ubuntu / Debian + Caddy 自动 HTTPS）
+
+前置条件：一台公网服务器（建议 2 核 4GB 内存以上、20GB 磁盘），域名已解析到该服务器 IP。
+
+```bash
+# 克隆代码
+git clone <仓库地址> mediacut
+cd mediacut
+
+# 一键部署，自动申请并续期 HTTPS 证书
+# --preheat-models 首次会下载语音识别与抠图模型，耗时较长
+sudo bash deploy/install.sh --domain didimedia.com --preheat-models
+```
+
+脚本会依次完成：安装系统依赖（ffmpeg 等）、Node.js、Caddy；创建 Python 虚拟环境并安装依赖；构建前端；写入 `/etc/mediacut/mediacut.env`；注册 systemd 服务 `mediacut`；配置 Caddy 反向代理与 HTTPS。完成后访问 `https://didimedia.com`，管理后台为 `https://didimedia.com/login`。
+
+常用运维命令：
+
+```bash
+# 查看服务状态
+systemctl status mediacut
+
+# 查看实时日志
+journalctl -u mediacut -f
+
+# 修改环境变量后重启
+systemctl restart mediacut
+```
+
+配置项参见 `.env.example` 与 `deploy/mediacut.env.example`。生产环境务必修改 `ADMIN_PASSWORD` 与 `JWT_SECRET`。
+
 ## 开发者对接示例
 
 ```bash
