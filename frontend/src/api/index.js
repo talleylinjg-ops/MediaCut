@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { clearAdminToken, clearClientToken } from '../utils/auth'
 
 const http = axios.create({
   baseURL: '/api/v1',
@@ -29,11 +30,11 @@ http.interceptors.response.use(
     const status = error.response?.status
     const url = error.config?.url || ''
     if (status === 401 && url.startsWith('/admin') && url !== '/admin/login') {
-      localStorage.removeItem('admin_token')
+      clearAdminToken()
       window.location.href = '/login'
     }
     if (status === 401 && url.startsWith('/dev/client') && url !== '/dev/client/login') {
-      localStorage.removeItem('client_token')
+      clearClientToken()
       window.location.href = '/client/login'
     }
     return Promise.reject(error)

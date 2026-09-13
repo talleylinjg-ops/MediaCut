@@ -26,6 +26,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api'
+import { setClientToken } from '../../utils/auth'
 import PortalNav from '../../components/PortalNav.vue'
 
 const router = useRouter()
@@ -36,7 +37,7 @@ async function login() {
   loading.value = true
   try {
     const { data } = await http.post('/dev/client/login', form)
-    localStorage.setItem('client_token', data.token)
+    setClientToken(data.token)
     ElMessage.success('登录成功')
     router.push('/client/console')
   } catch (e) {

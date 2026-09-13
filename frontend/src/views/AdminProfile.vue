@@ -73,7 +73,7 @@
               :closable="false"
               show-icon
               style="margin-bottom: 16px"
-              title="内置 AI 能力（AI 抠图 / 画质增强 / 语音识别 / 语音合成）已全部本地免费运行，无需任何 Token。仅在需要调用 ModelScope 云端大模型 API 时才需填写下方 Token。"
+              title="内置 AI 能力（AI 抠图 / 画质增强 / 语音识别 / 语音合成）已全部本地免费运行，无需任何 Token。填写下方 Token 后，可使用云端生成式能力：图生图编辑（换装/加删物体/换背景，主用 Qwen-Image-Edit，失败自动回退 Qwen-Image）、文生图云端备份、图片理解与对话意图解析。"
             />
             <el-form label-width="110px" class="account-form" @submit.prevent>
               <el-form-item label="API Token">
@@ -175,6 +175,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../api'
+import { clearAdminToken } from '../utils/auth'
 import AdminShell from '../components/AdminShell.vue'
 
 const pwd = reactive({ current_password: '', new_password: '', confirm: '' })
@@ -241,7 +242,7 @@ async function changePassword() {
       new_password: pwd.new_password
     })
     ElMessage.success('密码已修改，请使用新密码重新登录')
-    localStorage.removeItem('admin_token')
+    clearAdminToken()
     location.href = '/login'
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '修改失败')

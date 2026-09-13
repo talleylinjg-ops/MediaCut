@@ -173,6 +173,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import QRCode from 'qrcode'
 import http from '../../api'
+import { clearClientToken } from '../../utils/auth'
 import PortalNav from '../../components/PortalNav.vue'
 
 const router = useRouter()
@@ -357,7 +358,7 @@ async function saveProfile() {
 }
 
 function logout() {
-  localStorage.removeItem('client_token')
+  clearClientToken()
   localStorage.removeItem('api_key')
   localStorage.removeItem('saved_api_key')
   sessionStorage.removeItem('api_key')

@@ -78,7 +78,7 @@
               :closable="false"
               show-icon
               style="margin-bottom: 12px"
-              title="AI 剪辑即对话剪辑：导入源文件后，用一句话描述需求，AI 自动理解并执行。支持：滤镜（复古/黑白等16种）、抠图、画质增强、加文字水印（可指定方位）、裁剪/缩放/转格式、语音识别/合成。注意：无法凭空生成图中不存在的内容（如需「生成/换装」图片请另配图像生成引擎）。"
+              title="AI 剪辑即对话剪辑：导入源文件后，用一句话描述需求，AI 自动理解并执行。支持：滤镜（复古/黑白等16种）、抠图、画质增强、加文字水印（可指定方位）、裁剪/缩放/转格式、语音识别/合成。已上传图片还可做生成式修改（换装/加删物体/改背景/改画风，需配置 ModelScope Token）；未上传图片时说「生成/画一张…」可直接文生图。"
             />
             <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
               <el-button type="primary" plain @click="pickMedia">导入源文件</el-button>
@@ -146,6 +146,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '../../api'
+import { onAuthChange } from '../../utils/auth'
 import PortalNav from '../../components/PortalNav.vue'
 
 const apiKey = ref(sessionStorage.getItem('api_key') || '')
@@ -187,8 +188,7 @@ onMounted(async () => {
   }
 })
 
-function onKeyStorage(e) {
-  if (e.key !== 'api_key' && e.key !== 'saved_api_key' && e.key !== 'client_token' && e.key !== null) return
+function syncKeyFromAuth() {
   const token = localStorage.getItem('client_token')
   if (!token) {
     apiKey.value = sessionStorage.getItem('api_key') || ''
@@ -206,8 +206,17 @@ function onKeyStorage(e) {
       .catch(() => {})
   }
 }
+
+function onKeyStorage(e) {
+  if (e.key !== 'api_key' && e.key !== 'saved_api_key' && e.key !== null) return
+  syncKeyFromAuth()
+}
 window.addEventListener('storage', onKeyStorage)
-onUnmounted(() => window.removeEventListener('storage', onKeyStorage))
+const offAuth = onAuthChange(syncKeyFromAuth)
+onUnmounted(() => {
+  window.removeEventListener('storage', onKeyStorage)
+  offAuth()
+})
 
 async function validateKey(silent) {
   const k = apiKey.value.trim()

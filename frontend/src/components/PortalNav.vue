@@ -13,7 +13,19 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { isClientLoggedIn, onAuthChange } from '../utils/auth'
 
-const clientLoggedIn = ref(Boolean(localStorage.getItem('client_token')))
+const clientLoggedIn = ref(isClientLoggedIn())
+let offAuth = null
+
+onMounted(() => {
+  offAuth = onAuthChange(() => {
+    clientLoggedIn.value = isClientLoggedIn()
+  })
+})
+
+onUnmounted(() => {
+  if (offAuth) offAuth()
+})
 </script>

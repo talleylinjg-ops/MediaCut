@@ -20,6 +20,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api'
+import { setAdminToken } from '../utils/auth'
 
 const router = useRouter()
 const username = ref('')
@@ -31,7 +32,7 @@ async function login() {
       username: username.value,
       password: password.value
     })
-    localStorage.setItem('admin_token', data.token)
+    setAdminToken(data.token)
     router.push('/admin')
   } catch (e) {
     ElMessage.error(e.response?.data?.detail || '登录失败')
