@@ -31,7 +31,7 @@ from app.schemas import (
     RechargeOrderOut,
     StatOut,
 )
-from app.services import payment_service
+from app.services import ai_service, payment_service
 
 router = APIRouter(prefix="/api/v1/admin", tags=["管理后台"])
 
@@ -82,7 +82,10 @@ def get_config():
     return ConfigOut(
         admin_username=settings.get_admin_username() or "admin",
         modelscope_configured=bool(settings.get_modelscope_token()),
-        models={},
+        models={
+            "图生图编辑（主）": ai_service.I2I_MODEL,
+            "图生图编辑（备）": ai_service.I2I_FALLBACK_MODEL,
+        },
         alipay_configured=bool(settings.get_pay_config("pay_alipay_appid")),
         wechat_configured=bool(settings.get_pay_config("pay_wechat_mchid")),
     )

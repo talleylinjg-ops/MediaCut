@@ -105,7 +105,12 @@ def run_tts(text: str, output_dir: str) -> str:
 
 POLLINATIONS_IMG_URL = "https://image.pollinations.ai/prompt/{prompt}"
 MODELSCOPE_T2I_URL = "https://api-inference.modelscope.cn/v1/images/generations"
+MODELSCOPE_TASK_URL = "https://api-inference.modelscope.cn/v1/tasks/{task_id}"
 T2I_MODEL = "Qwen/Qwen-Image"
+I2I_MODEL = "Qwen/Qwen-Image-Edit"
+I2I_FALLBACK_MODEL = "Qwen/Qwen-Image"
+I2I_IMAGE_MAX_EDGE = 1280
+I2I_OUTPUT_SIZE = "1024x1024"
 
 _T2I_BLOCKED_KEYWORDS = (
     "裸体",
@@ -199,6 +204,115 @@ def run_t2i(prompt: str, output_dir: str, width: int = 1024, height: int = 1024)
     except Exception:
         data = _t2i_modelscope(prompt, width, height)
     return _save_image_bytes(data, output_dir)
+
+
+_IMAGE_MIME_MAP = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
+}
+
+
+def _image_to_data_uri(input_path: str) -> str:
+    import base64
+
+    from io import BytesIO
+
+    from PIL import Image
+
+    ext = os.path.splitext(input_path)[1].lower()
+    raw_size = os.path.getsize(input_path)
+    with Image.open(input_path) as img:
+        max_edge = max(img.size)
+        if ext in (".webp", ".bmp", ".gif") or max_edge > I2I_IMAGE_MAX_EDGE or raw_size > 4 * 1024 * 1024:
+            rgb = img.convert("RGB")
+            if max_edge > I2I_IMAGE_MAX_EDGE:
+                ratio = I2I_IMAGE_MAX_EDGE / max_edge
+                rgb = rgb.resize(
+                    (max(1, int(img.width * ratio)), max(1, int(img.height * ratio))), Image.LANCZOS
+                )
+            buf = BytesIO()
+            rgb.save(buf, "JPEG", quality=90)
+            return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    with open(input_path, "rb") as f:
+        raw = f.read()
+    mime = _IMAGE_MIME_MAP.get(ext, "image/png")
+    return f"data:{mime};base64," + base64.b64encode(raw).decode()
+
+
+def _modelscope_image_edit(image_uri: str, prompt: str, model: str) -> bytes:
+    import time
+
+    import httpx
+
+    from app.core.settings import get_modelscope_token
+
+    token = get_modelscope_token()
+    if not token:
+        raise HTTPException(
+            status_code=503,
+            detail="云端图像编辑暂不可用：未配置 ModelScope Token（可在管理后台可选填写）",
+        )
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "image_url": image_uri,
+        "size": I2I_OUTPUT_SIZE,
+    }
+    resp = httpx.post(
+        MODELSCOPE_T2I_URL,
+        json=payload,
+        headers={**headers, "X-ModelScope-Async-Mode": "true"},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    task_id = resp.json()["task_id"]
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        time.sleep(5)
+        query = httpx.get(
+            MODELSCOPE_TASK_URL.format(task_id=task_id),
+            headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
+            timeout=30,
+        )
+        query.raise_for_status()
+        data = query.json()
+        status = data.get("task_status")
+        if status == "SUCCEED":
+            image_url = data["output_images"][0]
+            image_resp = httpx.get(image_url, timeout=120, follow_redirects=True)
+            image_resp.raise_for_status()
+            return image_resp.content
+        if status == "FAILED":
+            errors = data.get("errors") or {}
+            detail = errors.get("message") if isinstance(errors, dict) else ""
+            raise HTTPException(
+                status_code=502, detail=f"云端图像编辑失败：{detail or '内容被拒绝或任务异常，请调整描述后重试'}"
+            )
+    raise HTTPException(status_code=504, detail="云端图像编辑超时，请稍后重试")
+
+
+def run_i2i(input_path: str, prompt: str, output_dir: str) -> str:
+    if not prompt or not prompt.strip():
+        raise HTTPException(status_code=400, detail="需要说明要如何修改图片")
+    if not _is_safe_t2i_prompt(prompt):
+        raise HTTPException(status_code=400, detail="该修改要求包含不允许的内容，请调整后重试")
+    image_uri = _image_to_data_uri(input_path)
+    last_error: HTTPException | None = None
+    for model in (I2I_MODEL, I2I_FALLBACK_MODEL):
+        try:
+            data = _modelscope_image_edit(image_uri, prompt, model)
+            return _save_image_bytes(data, output_dir)
+        except HTTPException as exc:
+            if exc.status_code == 503:
+                raise
+            last_error = exc
+    if last_error is not None:
+        raise last_error
+    raise HTTPException(status_code=502, detail="云端图像编辑失败，请稍后重试")
 
 
 def run_ai_task(task_type: str, params: dict, output_dir: str) -> dict:

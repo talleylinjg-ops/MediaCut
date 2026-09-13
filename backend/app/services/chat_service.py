@@ -16,20 +16,22 @@ QWEN_VL_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
 SYSTEM_PROMPT = (
     "你是媒体剪辑助手，根据用户请求和输入媒体类型决定执行动作。"
     "只输出一个 JSON 对象，不要输出任何其他文字。JSON 结构："
-    '{"action":"image_understand|image_edit|audio_edit|matting|enhance|asr|tts|image_to_video|t2i|reply","params":{},"reply":"给用户的简短中文回复"}。'
-    "图片输入时 action 可选 image_understand/image_edit/matting/enhance/image_to_video，"
+    '{"action":"image_understand|image_edit|i2i|audio_edit|matting|enhance|asr|tts|image_to_video|t2i|reply","params":{},"reply":"给用户的简短中文回复"}。'
+    "图片输入时 action 可选 image_understand/image_edit/i2i/matting/enhance/image_to_video，"
     "若用户是在询问图片内容（如：这是什么/图里有什么/描述一下/识别图中文字/帮我看看），action 必须用 image_understand，params 留空，reply 简短说明已识别。"
     "图片编辑 params 支持 filter(gray/blur/sharpen/edge/emboss/cinematic/invert/sepia/warm/cool/pixelate/vignette/contrast/sketch/cartoon/flip)、resize(width)、watermark(text,size,position)、crop、output_format(png/jpeg/webp)。"
     "watermark.position 可为 'center'/'top-left'/'top-right'/'bottom-left'/'bottom-right' 或 [x,y] 坐标。"
     "image_to_video params 支持 duration(秒)、motion(zoom/pan)，基于已上传图片生成镜头运镜视频：zoom 为缓慢推进，pan 为横向平移（适合驰骋/行驶/公路等有方向感的表达）。注意：这只是镜头推拉/平移，画面内容本身不会运动。"
+    "i2i 为基于已上传图片的云端生成式修改：当用户对图中内容提出修改（如把衣服换成红色/换风格/加一顶帽子/去掉背景里的路人/背景换成海边/改成动漫风/加一轮月亮/给画面添加文字等），action 用 i2i，params 写 {\"prompt\":\"对图片的完整、具体的修改要求，保留原图主体与构图\"}。"
+    "注意区分：需要保持尺寸与像素可逆加工（滤镜/灰度/水印/裁剪/缩放/转格式/抠图/增强）用 image_edit/matting/enhance；对内容做生成式改写（换装/加删物体/改背景/风格化重绘/叠加画面元素）用 i2i；两者不要混淆。"
     "音频输入时 action 可选 audio_edit/asr，"
     "音频编辑 params 支持 crop(start,end)、volume(gain)、output_format(mp3/wav/aac)。"
     "只有文字时可用 reply 直接回答，或用 tts 将文字转为语音。"
     "重要：只要用户上传了图片并提出视频/动画/动态相关请求（如：生成视频、做成动态、动起来、驰骋、飞驰、行驶、平移运镜），action 一律用 image_to_video（可带图自动生成运镜），绝对不要用 reply 拒绝或误判为图片内容修改。reply 只需简短告知正在生成视频。"
     "文生图：仅当用户没有上传图片、且明确要求生成一张全新的图（例如：生成一张/画一张/帮我画/设计 logo/海报/封面/插画/头像/壁纸/背景图，或描述一个不存在于任何素材的画面）时，action 用 t2i，params 写 {\"prompt\":\"保留用户主体、风格、构图、画面细节的完整生成描述\"}。"
     "当输入中包含『图片内容：』字段时，它是对用户上传图片的视觉理解结果，你应该基于图片实际内容理解用户意图并选择最合适的动作（例如图片是人物照片且用户要复古风格，就执行 sepia 复古滤镜；用户询问图中人物外貌则用 image_understand 回答）。"
-    "重要限制：对于已上传的图片，你只能做滤镜/抠图/画质增强/水印/裁剪/缩放/转格式/镜头运镜视频等操作；无法对图中人物换装、修改面部、凭空添加或删除图中物体，也无法让画面内容真正运动（如让车开起来、让动作发生）。"
-    "若用户对已上传图片提出内容级修改（换装、换脸、添加/删除物体、改文字，或要求画面内容真正动起来/车跑起来等视频生成类需求），action 必须用 reply，如实说明：镜头运镜视频可以生成（会直接生成），但让画面内容真实运动/换装等生成式能力暂未接入。"
+    "对于已上传图片的内容级修改（换装、换脸、添加/删除物体、换背景、改变画风、季节光影等生成式需求），action 用 i2i 执行云端生成式修改，不要用 reply 拒绝。"
+    "目前唯一做不到的是让已上传图片的画面内容真正运动（如让车开起来、让动作发生）：这类视频生成请求按第上一条执行 image_to_video 运镜视频即可，并在 reply 中如实说明这只是镜头运镜。"
     "若用户没有上传图片且直接提出生成/换装/凭空绘制需求，一律使用 t2i 生成全新图片，不要使用 reply 拒绝。"
 )
 
@@ -123,6 +125,7 @@ def parse_with_llm(text: str, media_kind: str, caption: str | None = None) -> di
     if action not in (
         "image_understand",
         "image_edit",
+        "i2i",
         "audio_edit",
         "matting",
         "enhance",
@@ -230,14 +233,19 @@ def parse_with_rules(text: str, media_kind: str) -> dict:
         if params:
             return {"action": "image_edit", "params": params, "reply": "已按你的要求处理图片"}
         if re.search(
-            r"换(装|衣|衣服)|换脸|穿.{0,8}(衣服|西装|裙|外套)|加(个|上)?(帽子|眼镜|项链|耳环|纹身)|"
-            r"给.{0,8}(添加|戴上|穿上)|凭空|无中生有|背景换成|删(掉|除).{0,8}(人|物|物体)|消除.{0,8}(人|物|文字)",
+            r"换(装|衣|衣服)|衣服换成|服装换成|发型换成|发色换成|头发换成|肤色换成|换脸|"
+            r"穿.{0,8}(衣服|西装|裙|外套|大衣|衬衫|T恤)|"
+            r"加.{0,6}(帽子|眼镜|墨镜|项链|耳环|纹身|胡须|胡子|刘海|围巾|领带|头饰|皇冠|蕾丝|蝴蝶结|花边|装饰|披肩)|"
+            r"给.{0,8}(添加|戴上|穿上|加上|换成)|摘(掉|下)|去掉|删(掉|除)|移除|消除|"
+            r"(染成|涂成|改成|换成).{0,6}色|改成.{0,4}款|(改|换)(个|下|一下)?颜色|颜色改|颜色换|"
+            r"背景换成|背景改成|改成(动漫|卡通|油画|水墨|赛博朋克|夜景|雪景|漫画|古风)|变成.{0,6}(风|风格)|"
+            r"加.{0,6}(月亮|太阳|云|彩虹|花|雪|烟花)|增(加|添)",
             t,
         ):
             return {
-                "action": "reply",
-                "params": {},
-                "reply": "我只能对已上传图片做剪辑（滤镜/抠图/增强/水印/裁剪/转格式），无法直接修改图中的人物、服装或物体。想要全新画面，请直接一句话描述想要的画面内容（不要再传图），我可以为你生成一张新图。",
+                "action": "i2i",
+                "params": {"prompt": t},
+                "reply": "正在基于原图生成修改效果，需要十几秒到一分钟，请稍候",
             }
         return {"action": "reply", "params": {}, "reply": "请告诉我具体要做什么，例如：加水印、转png、灰度、放大、抠图、增强。"}
     if media_kind == "audio":
@@ -331,6 +339,19 @@ def run_chat(params: dict, task_dir: str) -> dict:
             detail = str(getattr(exc, "detail", "") or exc)
             return {"kind": "text", "text": f"图片生成失败：{detail}", "filename": None}
         return {"kind": "image", "text": reply or "图片已生成", "filename": filename}
+
+    if action == "i2i":
+        if not media_path or not os.path.exists(media_path):
+            return {"kind": "text", "text": "需要上传图片才能进行生成式修改。", "filename": None}
+        if media_kind != "image":
+            return {"kind": "text", "text": "生成式修改需要图片输入。", "filename": None}
+        prompt = (iparams.get("prompt") or "").strip() or combined
+        try:
+            filename = ai_service.run_i2i(media_path, prompt, task_dir)
+        except Exception as exc:
+            detail = str(getattr(exc, "detail", "") or exc)
+            return {"kind": "text", "text": f"图片修改失败：{detail}", "filename": None}
+        return {"kind": "image", "text": reply or "已基于原图生成修改效果", "filename": filename}
 
     if action == "tts":
         tts_text = iparams.get("text") or text or combined
