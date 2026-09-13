@@ -55,6 +55,12 @@ app.add_middleware(
 async def spa_fallback(request: Request, exc: HTTPException):
     if request.url.path.startswith(SPA_EXCLUDED_PREFIXES):
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    rel = os.path.normpath(request.url.path.lstrip("/"))
+    if rel and rel != "." and not rel.startswith(".."):
+        dist_root = os.path.realpath(FRONTEND_DIST)
+        candidate = os.path.realpath(os.path.join(FRONTEND_DIST, rel))
+        if candidate.startswith(dist_root) and os.path.isfile(candidate):
+            return FileResponse(candidate)
     index_file = os.path.join(FRONTEND_DIST, "index.html")
     if os.path.exists(index_file):
         resp = FileResponse(index_file)

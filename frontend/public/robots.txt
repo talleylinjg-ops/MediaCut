@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /account
+Disallow: /developers
+Disallow: /stats
+Disallow: /client/console
+Disallow: /login
+Disallow: /api/
+
+Sitemap: https://didimedia.com/sitemap.xml
