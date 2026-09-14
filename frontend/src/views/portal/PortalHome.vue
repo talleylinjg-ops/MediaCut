@@ -2,7 +2,7 @@
   <div>
     <PortalNav />
     <div style="padding: 40px; max-width: 1000px; margin: 0 auto">
-      <h2>大气媒体剪辑 API 服务平台</h2>
+      <h1 style="font-size: 24px; margin: 0 0 12px">大气媒体剪辑 API 服务平台</h1>
       <p>
         一站式图片、音频与 AI 处理能力，通过简单 HTTP 接口接入，配额透明、按量计费。
       </p>
