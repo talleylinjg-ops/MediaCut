@@ -169,6 +169,48 @@ def _t2i_pollinations(prompt: str, width: int, height: int) -> bytes:
     return resp.content
 
 
+def _modelscope_error_detail(payload) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    err = payload.get("error")
+    if isinstance(err, dict):
+        return err.get("message") or err.get("code") or ""
+    if isinstance(err, str):
+        return err
+    return payload.get("message") or payload.get("detail") or ""
+
+
+def _modelscope_poll_image(headers: dict, task_id: str, label: str) -> bytes:
+    import time
+
+    import httpx
+
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        time.sleep(5)
+        query = httpx.get(
+            MODELSCOPE_TASK_URL.format(task_id=task_id),
+            headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
+            timeout=30,
+        )
+        query.raise_for_status()
+        data = query.json()
+        status = data.get("task_status")
+        if status == "SUCCEED":
+            outputs = data.get("output_images") or []
+            if not outputs:
+                raise HTTPException(status_code=502, detail=f"{label}失败：未返回图片数据")
+            image_resp = httpx.get(outputs[0], timeout=120, follow_redirects=True)
+            image_resp.raise_for_status()
+            return image_resp.content
+        if status == "FAILED":
+            detail = _modelscope_error_detail(data.get("errors"))
+            raise HTTPException(
+                status_code=502, detail=f"{label}失败：{detail or '内容被拒绝或任务异常，请调整描述后重试'}"
+            )
+    raise HTTPException(status_code=504, detail=f"{label}超时，请稍后重试")
+
+
 def _t2i_modelscope(prompt: str, width: int, height: int) -> bytes:
     import base64
     import httpx
@@ -181,20 +223,33 @@ def _t2i_modelscope(prompt: str, width: int, height: int) -> bytes:
             status_code=503,
             detail="图像生成服务暂不可用：免费生成源连接失败，且未配置 ModelScope Token（可在管理后台可选填写）",
         )
+    headers = {"Authorization": f"Bearer {token}"}
     payload = {"model": T2I_MODEL, "prompt": prompt, "size": f"{width}x{height}"}
     resp = httpx.post(
         MODELSCOPE_T2I_URL,
         json=payload,
-        headers={"Authorization": f"Bearer {token}"},
+        headers={**headers, "X-ModelScope-Async-Mode": "true"},
         timeout=120,
     )
     resp.raise_for_status()
-    item = resp.json()["data"][0]
-    if item.get("b64_json"):
-        return base64.b64decode(item["b64_json"])
-    image_resp = httpx.get(item["url"], timeout=120, follow_redirects=True)
-    image_resp.raise_for_status()
-    return image_resp.content
+    body = resp.json()
+    items = body.get("data") if isinstance(body, dict) else None
+    if items:
+        item = items[0]
+        if item.get("b64_json"):
+            return base64.b64decode(item["b64_json"])
+        if item.get("url"):
+            image_resp = httpx.get(item["url"], timeout=120, follow_redirects=True)
+            image_resp.raise_for_status()
+            return image_resp.content
+    task_id = body.get("task_id") if isinstance(body, dict) else None
+    if task_id:
+        return _modelscope_poll_image(headers, task_id, "图像生成")
+    raise HTTPException(
+        status_code=502,
+        detail=f"图像生成失败：{_modelscope_error_detail(body) or '生成服务返回数据格式异常，请稍后重试'}",
+    )
+
 
 
 def _channel_headers(channel: dict) -> dict:
@@ -207,9 +262,17 @@ def _channel_image_bytes(payload: dict) -> bytes:
     import base64
     import httpx
 
-    item = payload["data"][0]
+    items = payload.get("data") if isinstance(payload, dict) else None
+    if not items:
+        detail = _modelscope_error_detail(payload)
+        raise HTTPException(
+            status_code=502, detail=f"生成渠道返回异常：{detail or '返回数据格式不正确'}"
+        )
+    item = items[0]
     if item.get("b64_json"):
         return base64.b64decode(item["b64_json"])
+    if not item.get("url"):
+        raise HTTPException(status_code=502, detail="生成渠道未返回图片数据")
     image_resp = httpx.get(item["url"], timeout=120, follow_redirects=True)
     image_resp.raise_for_status()
     return image_resp.content
@@ -261,11 +324,16 @@ def run_t2i(prompt: str, output_dir: str, width: int = 1024, height: int = 1024)
             return _save_image_bytes(data, output_dir)
         except Exception:
             continue
-    try:
-        data = _t2i_pollinations(prompt, width, height)
-    except Exception:
-        data = _t2i_modelscope(prompt, width, height)
-    return _save_image_bytes(data, output_dir)
+    sizes = []
+    for pair in ((width, height), (768, 768), (512, 512)):
+        if pair[0] and pair[1] and pair not in sizes:
+            sizes.append(pair)
+    for w, h in sizes:
+        try:
+            return _save_image_bytes(_t2i_pollinations(prompt, w, h), output_dir)
+        except Exception:
+            continue
+    return _save_image_bytes(_t2i_modelscope(prompt, width, height), output_dir)
 
 
 _IMAGE_MIME_MAP = {
@@ -305,8 +373,6 @@ def _image_to_data_uri(input_path: str) -> str:
 
 
 def _modelscope_image_edit(image_uri: str, prompt: str, model: str) -> bytes:
-    import time
-
     import httpx
 
     from app.core.settings import get_modelscope_token
@@ -331,30 +397,14 @@ def _modelscope_image_edit(image_uri: str, prompt: str, model: str) -> bytes:
         timeout=120,
     )
     resp.raise_for_status()
-    task_id = resp.json()["task_id"]
-    deadline = time.time() + 300
-    while time.time() < deadline:
-        time.sleep(5)
-        query = httpx.get(
-            MODELSCOPE_TASK_URL.format(task_id=task_id),
-            headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
-            timeout=30,
+    body = resp.json()
+    task_id = body.get("task_id") if isinstance(body, dict) else None
+    if not task_id:
+        raise HTTPException(
+            status_code=502,
+            detail=f"云端图像编辑失败：{_modelscope_error_detail(body) or '未取得任务 ID，请稍后重试'}",
         )
-        query.raise_for_status()
-        data = query.json()
-        status = data.get("task_status")
-        if status == "SUCCEED":
-            image_url = data["output_images"][0]
-            image_resp = httpx.get(image_url, timeout=120, follow_redirects=True)
-            image_resp.raise_for_status()
-            return image_resp.content
-        if status == "FAILED":
-            errors = data.get("errors") or {}
-            detail = errors.get("message") if isinstance(errors, dict) else ""
-            raise HTTPException(
-                status_code=502, detail=f"云端图像编辑失败：{detail or '内容被拒绝或任务异常，请调整描述后重试'}"
-            )
-    raise HTTPException(status_code=504, detail="云端图像编辑超时，请稍后重试")
+    return _modelscope_poll_image(headers, task_id, "云端图像编辑")
 
 
 def run_i2i(input_path: str, prompt: str, output_dir: str) -> str:
