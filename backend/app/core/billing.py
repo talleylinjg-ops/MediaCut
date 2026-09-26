@@ -5,6 +5,9 @@ PRICE_TABLE = {
     "/api/v1/ai/enhance": 15,
     "/api/v1/ai/asr": 10,
     "/api/v1/ai/tts": 5,
+    "/api/v1/ai/t2i": 10,
+    "/api/v1/ai/i2i": 15,
+    "/api/v1/ai/video": 20,
     "/api/v1/ai/chat": 10,
 }
 

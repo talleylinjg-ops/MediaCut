@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import RESULT_DIR, UPLOAD_DIR
-from app.core import billing, quota, task_queue
+from app.core import billing, channels, quota, task_queue
 from app.core.security import authenticate_developer
 from app.database import get_db
 from app.models import Developer
@@ -36,6 +36,8 @@ def submit_chat(
         raise HTTPException(status_code=400, detail="text, voice or media is required")
 
     price = billing.get_price("/api/v1/ai/chat")
+    if any(channels.has_free(cap) for cap in ("chat", "t2i", "i2i")):
+        price = 0
     quota.check_quota(db, developer, price)
 
     params: dict = {"text": text or ""}
@@ -62,6 +64,108 @@ def submit_chat(
         params["media_path"] = _save_upload(media, ext)
 
     task_id = task_queue.create_task(developer.id, "chat", params)
+    quota.consume_quota(db, developer, price)
+
+    return TaskSubmitResponse(
+        task_id=task_id,
+        status="pending",
+        status_url=f"/api/v1/tasks/{task_id}",
+    )
+
+
+@router.post("/i2i", response_model=TaskSubmitResponse)
+def submit_i2i(
+    file: UploadFile = File(...),
+    prompt: str = Form(...),
+    developer: Developer = Depends(authenticate_developer),
+    db: Session = Depends(get_db),
+):
+    prompt = (prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    price = billing.get_price("/api/v1/ai/i2i")
+    if channels.has_free("i2i"):
+        price = 0
+    quota.check_quota(db, developer, price)
+
+    image_service.validate_image(file.content_type or "", file.size or 0)
+    ext = (file.filename or "image.png").rsplit(".", 1)[-1].lower() or "png"
+    input_path = _save_upload(file, ext)
+
+    task_id = task_queue.create_task(developer.id, "i2i", {"input_path": input_path, "prompt": prompt})
+    quota.consume_quota(db, developer, price)
+
+    return TaskSubmitResponse(
+        task_id=task_id,
+        status="pending",
+        status_url=f"/api/v1/tasks/{task_id}",
+    )
+
+
+@router.post("/t2i", response_model=TaskSubmitResponse)
+def submit_t2i(
+    prompt: str = Form(...),
+    width: int = Form(None),
+    height: int = Form(None),
+    developer: Developer = Depends(authenticate_developer),
+    db: Session = Depends(get_db),
+):
+    prompt = (prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    price = billing.get_price("/api/v1/ai/t2i")
+    if channels.has_free("t2i"):
+        price = 0
+    quota.check_quota(db, developer, price)
+
+    params: dict = {"prompt": prompt}
+    if width:
+        params["width"] = width
+    if height:
+        params["height"] = height
+
+    task_id = task_queue.create_task(developer.id, "t2i", params)
+    quota.consume_quota(db, developer, price)
+
+    return TaskSubmitResponse(
+        task_id=task_id,
+        status="pending",
+        status_url=f"/api/v1/tasks/{task_id}",
+    )
+
+
+@router.post("/video", response_model=TaskSubmitResponse)
+def submit_video(
+    prompt: str = Form(...),
+    duration: int = Form(5),
+    motion: str = Form("zoom"),
+    width: int = Form(None),
+    height: int = Form(None),
+    developer: Developer = Depends(authenticate_developer),
+    db: Session = Depends(get_db),
+):
+    prompt = (prompt or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="prompt is required")
+
+    duration = max(1, min(int(duration or 5), 120))
+    if motion not in ("zoom", "pan"):
+        motion = "zoom"
+
+    price = billing.get_price("/api/v1/ai/video")
+    if channels.has_free("t2i"):
+        price = 0
+    quota.check_quota(db, developer, price)
+
+    params: dict = {"prompt": prompt, "duration": duration, "motion": motion}
+    if width:
+        params["width"] = width
+    if height:
+        params["height"] = height
+
+    task_id = task_queue.create_task(developer.id, "video", params)
     quota.consume_quota(db, developer, price)
 
     return TaskSubmitResponse(

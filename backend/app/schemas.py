@@ -82,16 +82,29 @@ class AdminProfileUpdate(BaseModel):
     name: Optional[str] = None
 
 
+class ChannelConfig(BaseModel):
+    name: str
+    base_url: str = ""
+    api_key: Optional[str] = None
+    model_id: str = ""
+    capabilities: list[str] = ["t2i", "i2i", "chat"]
+    priority: int = 100
+    is_free: bool = True
+    enabled: bool = True
+
+
 class ConfigOut(BaseModel):
     admin_username: str
     modelscope_configured: bool
     models: dict
+    channels: list[dict]
     alipay_configured: bool
     wechat_configured: bool
 
 
 class ConfigUpdate(BaseModel):
     modelscope_api_token: Optional[str] = None
+    channels: Optional[list[ChannelConfig]] = None
     pay_alipay_appid: Optional[str] = None
     pay_alipay_private_key: Optional[str] = None
     pay_alipay_public_key: Optional[str] = None

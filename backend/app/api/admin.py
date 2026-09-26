@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from app.core import settings
+from app.core import channels, settings
 from app.core.security import (
     admin_password_matches,
     create_admin_token,
@@ -86,6 +86,7 @@ def get_config():
             "图生图编辑（主）": ai_service.I2I_MODEL,
             "图生图编辑（备）": ai_service.I2I_FALLBACK_MODEL,
         },
+        channels=channels.public_channels(),
         alipay_configured=bool(settings.get_pay_config("pay_alipay_appid")),
         wechat_configured=bool(settings.get_pay_config("pay_wechat_mchid")),
     )
@@ -96,6 +97,8 @@ def update_config(payload: ConfigUpdate):
     if payload.modelscope_api_token is not None:
         token = payload.modelscope_api_token.strip()
         settings.set_modelscope_token(token)
+    if payload.channels is not None:
+        channels.save_channels([item.model_dump() for item in payload.channels])
     for key in settings.PAY_CONFIG_KEYS:
         value = getattr(payload, key, None)
         if value is not None:

@@ -47,6 +47,14 @@ def _set_config(key: str, value: str) -> None:
         db.close()
 
 
+def get_config_value(key: str) -> str:
+    return _get_config(key)
+
+
+def set_config_value(key: str, value: str) -> None:
+    _set_config(key, value)
+
+
 def get_modelscope_token() -> str:
     stored = _get_config(MODELSCOPE_TOKEN_KEY)
     return stored or ENV_MODELSCOPE_TOKEN

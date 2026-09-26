@@ -6,6 +6,7 @@ import uuid
 
 import httpx
 
+from app.core import channels
 from app.core.settings import get_modelscope_token
 from app.services import ai_service, audio_service, image_service, video_service
 
@@ -83,7 +84,31 @@ def _image_caption(image_path: str) -> str | None:
         return None
 
 
+def _channel_chat(channel: dict, messages: list[dict]) -> str:
+    base = channel["base_url"].rstrip("/")
+    headers = {}
+    if channel.get("api_key"):
+        headers["Authorization"] = f"Bearer {channel['api_key']}"
+    payload = {
+        "model": channel.get("model_id") or "",
+        "messages": messages,
+        "temperature": 0.2,
+    }
+    resp = httpx.post(f"{base}/chat/completions", json=payload, headers=headers, timeout=90)
+    resp.raise_for_status()
+    data = resp.json()
+    try:
+        return data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        raise RuntimeError("unexpected channel response")
+
+
 def chat_completion(messages: list[dict]) -> str:
+    for channel in channels.resolve("chat"):
+        try:
+            return _channel_chat(channel, messages)
+        except Exception:
+            continue
     token = get_modelscope_token()
     if not token:
         raise RuntimeError("MODELSCOPE_API_TOKEN not configured")

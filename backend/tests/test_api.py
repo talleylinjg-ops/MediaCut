@@ -378,3 +378,277 @@ def test_admin_modelscope_config():
 def test_admin_requires_auth():
     resp = client.get("/api/v1/admin/developers")
     assert resp.status_code == 401
+
+
+def test_admin_channel_config_roundtrip_masks_key():
+    from app.core import channels
+
+    token = client.post("/api/v1/admin/login", json={"username": "admin", "password": "admin123"}).json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        resp = client.put(
+            "/api/v1/admin/config",
+            headers=headers,
+            json={
+                "channels": [
+                    {
+                        "name": "didi_media",
+                        "base_url": "https://a.example.com/v1",
+                        "api_key": "super-secret",
+                        "model_id": "m1",
+                        "capabilities": ["t2i", "i2i"],
+                        "priority": 1,
+                        "is_free": True,
+                        "enabled": True,
+                    }
+                ]
+            },
+        )
+        assert resp.status_code == 200
+
+        resp = client.get("/api/v1/admin/config", headers=headers)
+        assert resp.status_code == 200
+        got = resp.json()["channels"]
+        assert len(got) == 1
+        assert got[0]["name"] == "didi_media"
+        assert got[0]["has_key"] is True
+        assert "api_key" not in got[0]
+
+        resp = client.put(
+            "/api/v1/admin/config",
+            headers=headers,
+            json={
+                "channels": [
+                    {
+                        "name": "didi_media",
+                        "base_url": "https://a.example.com/v1",
+                        "api_key": "",
+                        "model_id": "m1",
+                        "capabilities": ["t2i", "i2i"],
+                    }
+                ]
+            },
+        )
+        assert resp.status_code == 200
+        assert channels.get_channels()[0]["api_key"] == "super-secret"
+    finally:
+        channels.save_channels([])
+
+
+def test_chat_is_free_when_free_channel_configured():
+    from app.core import channels
+
+    channels.save_channels(
+        [
+            {
+                "name": "didi_media",
+                "base_url": "http://127.0.0.1:9/v1",
+                "api_key": "k",
+                "model_id": "m",
+                "capabilities": ["chat", "t2i", "i2i"],
+                "priority": 1,
+                "is_free": True,
+                "enabled": True,
+            }
+        ]
+    )
+    try:
+        key, _ = register_charged(balance=0)
+        resp = client.post(
+            "/api/v1/ai/chat",
+            headers={"Authorization": f"Bearer {key}"},
+            data={"text": "你好"},
+        )
+        assert resp.status_code == 200
+        db = SessionLocal()
+        try:
+            dev = db.query(models.Developer).filter(models.Developer.api_key_hash == hash_api_key(key)).first()
+            assert dev.balance == 0
+            assert dev.quota_used == 1
+        finally:
+            db.close()
+    finally:
+        channels.save_channels([])
+
+
+def test_t2i_endpoint_submits_and_charges(monkeypatch):
+    from app.core import task_queue
+
+    calls = {}
+
+    def fake_create(developer_id, task_type, params):
+        calls["task_type"] = task_type
+        calls["params"] = params
+        return "fake-t2i-id"
+
+    monkeypatch.setattr(task_queue, "create_task", fake_create)
+    key, _ = register_charged(balance=100)
+    resp = client.post(
+        "/api/v1/ai/t2i",
+        headers={"Authorization": f"Bearer {key}"},
+        data={"prompt": "一只在草地上的猫", "width": 768, "height": 768},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["task_id"] == "fake-t2i-id"
+    assert body["status_url"] == "/api/v1/tasks/fake-t2i-id"
+    assert calls["task_type"] == "t2i"
+    assert calls["params"]["width"] == 768
+    db = SessionLocal()
+    try:
+        dev = db.query(models.Developer).filter(models.Developer.api_key_hash == hash_api_key(key)).first()
+        assert dev.balance == 100 - billing.get_price("/api/v1/ai/t2i")
+    finally:
+        db.close()
+
+
+def test_t2i_endpoint_requires_prompt(monkeypatch):
+    from app.core import task_queue
+
+    monkeypatch.setattr(task_queue, "create_task", lambda *a, **k: "x")
+    key, _ = register_charged()
+    resp = client.post("/api/v1/ai/t2i", headers={"Authorization": f"Bearer {key}"}, data={"prompt": "  "})
+    assert resp.status_code == 400
+
+
+def test_i2i_endpoint_submits_and_charges(monkeypatch):
+    from app.core import task_queue
+
+    calls = {}
+
+    def fake_create(developer_id, task_type, params):
+        calls["task_type"] = task_type
+        calls["params"] = params
+        return "fake-i2i-id"
+
+    monkeypatch.setattr(task_queue, "create_task", fake_create)
+    key, _ = register_charged(balance=100)
+    resp = client.post(
+        "/api/v1/ai/i2i",
+        headers={"Authorization": f"Bearer {key}"},
+        files={"file": ("a.png", make_image_bytes(), "image/png")},
+        data={"prompt": "把背景换成海边"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["task_id"] == "fake-i2i-id"
+    assert calls["task_type"] == "i2i"
+    assert calls["params"]["prompt"] == "把背景换成海边"
+    assert calls["params"]["input_path"]
+    db = SessionLocal()
+    try:
+        dev = db.query(models.Developer).filter(models.Developer.api_key_hash == hash_api_key(key)).first()
+        assert dev.balance == 100 - billing.get_price("/api/v1/ai/i2i")
+    finally:
+        db.close()
+
+
+def test_i2i_endpoint_requires_file(monkeypatch):
+    from app.core import task_queue
+
+    monkeypatch.setattr(task_queue, "create_task", lambda *a, **k: "x")
+    key, _ = register_charged()
+    resp = client.post(
+        "/api/v1/ai/i2i",
+        headers={"Authorization": f"Bearer {key}"},
+        data={"prompt": "换成红色"},
+    )
+    assert resp.status_code == 422
+
+
+def test_i2i_is_free_when_free_channel_configured(monkeypatch):
+    from app.core import channels, task_queue
+
+    monkeypatch.setattr(task_queue, "create_task", lambda *a, **k: "fake-i2i-id")
+    channels.save_channels(
+        [
+            {
+                "name": "didi_mediacut",
+                "base_url": "http://127.0.0.1:9/v1",
+                "api_key": "k",
+                "model_id": "m",
+                "capabilities": ["t2i", "i2i"],
+                "priority": 1,
+                "is_free": True,
+                "enabled": True,
+            }
+        ]
+    )
+    try:
+        key, _ = register_charged(balance=0)
+        resp = client.post(
+            "/api/v1/ai/i2i",
+            headers={"Authorization": f"Bearer {key}"},
+            files={"file": ("a.png", make_image_bytes(), "image/png")},
+            data={"prompt": "把背景换成海边"},
+        )
+        assert resp.status_code == 200
+        db = SessionLocal()
+        try:
+            dev = db.query(models.Developer).filter(models.Developer.api_key_hash == hash_api_key(key)).first()
+            assert dev.balance == 0
+            assert dev.quota_used == 1
+        finally:
+            db.close()
+    finally:
+        channels.save_channels([])
+
+
+def test_video_endpoint_submits_and_charges(monkeypatch):
+    from app.core import task_queue
+
+    calls = {}
+
+    def fake_create(developer_id, task_type, params):
+        calls["task_type"] = task_type
+        calls["params"] = params
+        return "fake-video-id"
+
+    monkeypatch.setattr(task_queue, "create_task", fake_create)
+    key, _ = register_charged(balance=100)
+    resp = client.post(
+        "/api/v1/ai/video",
+        headers={"Authorization": f"Bearer {key}"},
+        data={"prompt": "海边日落", "duration": 8, "motion": "pan"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["task_id"] == "fake-video-id"
+    assert calls["task_type"] == "video"
+    assert calls["params"]["duration"] == 8
+    assert calls["params"]["motion"] == "pan"
+    db = SessionLocal()
+    try:
+        dev = db.query(models.Developer).filter(models.Developer.api_key_hash == hash_api_key(key)).first()
+        assert dev.balance == 100 - billing.get_price("/api/v1/ai/video")
+    finally:
+        db.close()
+
+
+def test_video_endpoint_requires_prompt(monkeypatch):
+    from app.core import task_queue
+
+    monkeypatch.setattr(task_queue, "create_task", lambda *a, **k: "x")
+    key, _ = register_charged()
+    resp = client.post("/api/v1/ai/video", headers={"Authorization": f"Bearer {key}"}, data={"prompt": " "})
+    assert resp.status_code == 400
+
+
+def test_video_endpoint_normalizes_invalid_motion(monkeypatch):
+    from app.core import task_queue
+
+    calls = {}
+
+    def fake_create(developer_id, task_type, params):
+        calls["params"] = params
+        return "fake-video-id"
+
+    monkeypatch.setattr(task_queue, "create_task", fake_create)
+    key, _ = register_charged()
+    resp = client.post(
+        "/api/v1/ai/video",
+        headers={"Authorization": f"Bearer {key}"},
+        data={"prompt": "雪山", "duration": 999, "motion": "spin"},
+    )
+    assert resp.status_code == 200
+    assert calls["params"]["motion"] == "zoom"
+    assert calls["params"]["duration"] == 120
+

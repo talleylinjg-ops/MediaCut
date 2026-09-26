@@ -7,7 +7,10 @@ import numpy as np
 
 from fastapi import HTTPException
 
-TASK_TYPES = {"matting", "enhance", "asr", "tts"}
+from app.core import channels
+from app.services import video_service
+
+TASK_TYPES = {"matting", "enhance", "asr", "tts", "t2i", "i2i", "video"}
 
 
 def _ensure_wav(input_path: str, output_dir: str) -> str:
@@ -194,11 +197,70 @@ def _t2i_modelscope(prompt: str, width: int, height: int) -> bytes:
     return image_resp.content
 
 
+def _channel_headers(channel: dict) -> dict:
+    if channel.get("api_key"):
+        return {"Authorization": f"Bearer {channel['api_key']}"}
+    return {}
+
+
+def _channel_image_bytes(payload: dict) -> bytes:
+    import base64
+    import httpx
+
+    item = payload["data"][0]
+    if item.get("b64_json"):
+        return base64.b64decode(item["b64_json"])
+    image_resp = httpx.get(item["url"], timeout=120, follow_redirects=True)
+    image_resp.raise_for_status()
+    return image_resp.content
+
+
+def _channel_t2i(channel: dict, prompt: str, width: int, height: int) -> bytes:
+    import httpx
+
+    base = channel["base_url"].rstrip("/")
+    payload = {"model": channel.get("model_id") or "", "prompt": prompt, "size": f"{width}x{height}"}
+    resp = httpx.post(
+        f"{base}/images/generations",
+        json=payload,
+        headers=_channel_headers(channel),
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return _channel_image_bytes(resp.json())
+
+
+def _channel_i2i(channel: dict, image_uri: str, prompt: str) -> bytes:
+    import httpx
+
+    base = channel["base_url"].rstrip("/")
+    payload = {
+        "model": channel.get("model_id") or "",
+        "prompt": prompt,
+        "image": image_uri,
+        "size": I2I_OUTPUT_SIZE,
+    }
+    resp = httpx.post(
+        f"{base}/images/edits",
+        json=payload,
+        headers=_channel_headers(channel),
+        timeout=300,
+    )
+    resp.raise_for_status()
+    return _channel_image_bytes(resp.json())
+
+
 def run_t2i(prompt: str, output_dir: str, width: int = 1024, height: int = 1024) -> str:
     if not prompt or not prompt.strip():
         raise HTTPException(status_code=400, detail="生成图片需要描述内容")
     if not _is_safe_t2i_prompt(prompt):
         raise HTTPException(status_code=400, detail="该描述包含不允许生成的内容，请调整后重试")
+    for channel in channels.resolve("t2i"):
+        try:
+            data = _channel_t2i(channel, prompt, width, height)
+            return _save_image_bytes(data, output_dir)
+        except Exception:
+            continue
     try:
         data = _t2i_pollinations(prompt, width, height)
     except Exception:
@@ -301,6 +363,12 @@ def run_i2i(input_path: str, prompt: str, output_dir: str) -> str:
     if not _is_safe_t2i_prompt(prompt):
         raise HTTPException(status_code=400, detail="该修改要求包含不允许的内容，请调整后重试")
     image_uri = _image_to_data_uri(input_path)
+    for channel in channels.resolve("i2i"):
+        try:
+            data = _channel_i2i(channel, image_uri, prompt)
+            return _save_image_bytes(data, output_dir)
+        except Exception:
+            continue
     last_error: HTTPException | None = None
     for model in (I2I_MODEL, I2I_FALLBACK_MODEL):
         try:
@@ -318,6 +386,40 @@ def run_i2i(input_path: str, prompt: str, output_dir: str) -> str:
 def run_ai_task(task_type: str, params: dict, output_dir: str) -> dict:
     if task_type not in TASK_TYPES:
         raise HTTPException(status_code=400, detail=f"unsupported task type: {task_type}")
+
+    if task_type == "t2i":
+        prompt = (params.get("prompt") or "").strip()
+        width = int(params.get("width") or 1024)
+        height = int(params.get("height") or 1024)
+        filename = run_t2i(prompt, output_dir, width, height)
+        return {"filename": filename, "kind": "image", "text": "图片已生成"}
+
+    if task_type == "i2i":
+        input_path = params.get("input_path")
+        if not input_path or not os.path.exists(input_path):
+            raise HTTPException(status_code=400, detail="input file missing")
+        prompt = (params.get("prompt") or "").strip()
+        filename = run_i2i(input_path, prompt, output_dir)
+        return {"filename": filename, "kind": "image", "text": "已基于原图生成修改效果"}
+
+    if task_type == "video":
+        prompt = (params.get("prompt") or "").strip()
+        if not prompt:
+            raise HTTPException(status_code=400, detail="text is required for video")
+        duration = int(params.get("duration") or 5)
+        motion = params.get("motion") or "zoom"
+        if motion not in ("zoom", "pan"):
+            motion = "zoom"
+        width = int(params.get("width") or 1024)
+        height = int(params.get("height") or 1024)
+        image_name = run_t2i(prompt, output_dir, width, height)
+        image_path = os.path.join(output_dir, image_name)
+        filename = video_service.image_to_video(image_path, duration, output_dir, motion=motion)
+        return {
+            "filename": filename,
+            "kind": "video",
+            "text": "已由文本生成画面并添加镜头运镜。说明：这是文本先生成画面，再做镜头推拉/平移，画面内容本身不会运动。",
+        }
 
     if task_type == "matting" or task_type == "enhance":
         input_path = params.get("input_path")
