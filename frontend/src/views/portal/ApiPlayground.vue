@@ -138,12 +138,105 @@
             <input ref="imageInput" type="file" accept="image/*" style="display: none" @change="onImage" />
             <input ref="mediaInput" type="file" accept="audio/*,image/*" style="display: none" @change="onMedia" />
       </el-card>
+
+      <el-card ref="createCard" style="margin-top: 16px">
+        <h3 style="margin: 0 0 8px">AI 创作（生成式）</h3>
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+          title="文生图、图生图编辑与文生视频。文生图可直接使用免费通道；图生图与视频需要已配置对应的图片生成/编辑渠道。"
+        />
+        <el-tabs v-model="createTab">
+          <el-tab-pane label="文生图" name="t2i">
+            <el-input
+              v-model="t2i.prompt"
+              type="textarea"
+              :rows="2"
+              placeholder="例如：赛博朋克城市夜景，霓虹灯，雨后街道"
+            />
+            <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap">
+              <span style="font-size: 13px">宽</span>
+              <el-input-number v-model="t2i.width" :min="256" :max="2048" :step="64" controls-position="right" style="width: 130px" />
+              <span style="font-size: 13px">高</span>
+              <el-input-number v-model="t2i.height" :min="256" :max="2048" :step="64" controls-position="right" style="width: 130px" />
+              <el-button type="primary" :loading="createLoading" @click="runTool('t2i')">生成图片</el-button>
+            </div>
+          </el-tab-pane>
+          <el-tab-pane label="图生图编辑" name="i2i">
+            <el-input
+              v-model="i2i.prompt"
+              type="textarea"
+              :rows="2"
+              placeholder="例如：把背景换成海边日落"
+            />
+            <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap">
+              <el-button plain @click="pickCreateImage">选择图片</el-button>
+              <span v-if="i2i.file" style="font-size: 13px; color: #67c23a">{{ i2i.file.name }}</span>
+              <span v-else style="font-size: 12px; color: #909399">需先选择一张图片</span>
+              <el-button type="primary" :loading="createLoading" @click="runTool('i2i')">生成</el-button>
+            </div>
+            <input ref="createImageInput" type="file" accept="image/*" style="display: none" @change="onCreateImage" />
+          </el-tab-pane>
+          <el-tab-pane label="文生视频" name="video">
+            <el-input
+              v-model="video.prompt"
+              type="textarea"
+              :rows="2"
+              placeholder="例如：雪山湖泊，清晨薄雾"
+            />
+            <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap">
+              <span style="font-size: 13px">时长(秒)</span>
+              <el-input-number v-model="video.duration" :min="1" :max="120" controls-position="right" style="width: 130px" />
+              <span style="font-size: 13px">运镜</span>
+              <el-select v-model="video.motion" style="width: 120px">
+                <el-option label="推拉 zoom" value="zoom" />
+                <el-option label="平移 pan" value="pan" />
+              </el-select>
+              <el-button type="primary" :loading="createLoading" @click="runTool('video')">生成视频</el-button>
+            </div>
+            <el-alert
+              type="warning"
+              :closable="false"
+              show-icon
+              style="margin-top: 8px"
+              title="该能力先生成画面再做镜头推拉/平移，画面内容本身不会运动。"
+            />
+          </el-tab-pane>
+        </el-tabs>
+        <div v-if="createResult" style="margin-top: 12px">
+          <div style="font-size: 13px; color: #909399">{{ createResult.text }}</div>
+          <img
+            v-if="createResult.kind === 'image' && createResult.url"
+            :src="createResult.url"
+            style="max-width: 320px; margin-top: 8px; border: 1px solid #e4e7ed"
+          />
+          <video
+            v-if="createResult.kind === 'video' && createResult.url"
+            :src="createResult.url"
+            controls
+            style="max-width: 400px; width: 100%; margin-top: 8px; border: 1px solid #e4e7ed"
+          />
+          <audio
+            v-if="createResult.kind === 'audio' && createResult.url"
+            :src="createResult.url"
+            controls
+            style="width: 100%; margin-top: 8px"
+          />
+          <div v-if="createResult.url" style="margin-top: 8px; display: flex; gap: 8px">
+            <el-button size="small" @click="viewResult(createResult.url)">查看</el-button>
+            <el-button size="small" type="primary" plain @click="downloadResult(createResult.url, createResult.fname)">下载</el-button>
+          </div>
+        </div>
+      </el-card>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../../api'
 import { onAuthChange } from '../../utils/auth'
@@ -167,6 +260,16 @@ let recStream = null
 let recChunks = []
 const attachMeta = computed(() => (attach.value ? `导入文件：${attach.value.file.name}` : ''))
 
+const route = useRoute()
+const createCard = ref(null)
+const createTab = ref('t2i')
+const createLoading = ref(false)
+const createResult = ref(null)
+const createImageInput = ref(null)
+const t2i = ref({ prompt: '', width: 768, height: 768 })
+const i2i = ref({ prompt: '', file: null })
+const video = ref({ prompt: '', duration: 5, motion: 'zoom' })
+
 onMounted(async () => {
   const hasLogin = !!localStorage.getItem('client_token')
   if (hasLogin) {
@@ -185,6 +288,11 @@ onMounted(async () => {
   if (k) {
     apiKey.value = k
     await validateKey(true)
+  }
+  const tab = route.query.tab
+  if (tab && ['t2i', 'i2i', 'video'].includes(tab)) createTab.value = tab
+  if (tab === 'create' || ['t2i', 'i2i', 'video'].includes(tab)) {
+    nextTick(() => createCard.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 })
 
@@ -434,6 +542,78 @@ async function sendChat() {
     chatText.value = ''
     if (attach.value?.type === 'voice') attach.value = null
     scrollDown()
+  }
+}
+
+function pickCreateImage() {
+  createImageInput.value?.click()
+}
+
+function onCreateImage(e) {
+  const f = e.target.files[0]
+  if (f) i2i.value.file = f
+  e.target.value = ''
+}
+
+async function pollTask(taskId, headers) {
+  for (let i = 0; i < 600; i++) {
+    await new Promise((r) => setTimeout(r, 1000))
+    const poll = await http.get(`/tasks/${taskId}`, { headers, timeout: 20000 })
+    if (poll.data.status === 'succeeded') return poll.data
+    if (poll.data.status === 'failed') throw new Error(poll.data.error || '任务失败')
+  }
+  return null
+}
+
+async function runTool(kind) {
+  if (!apiKey.value) return ElMessage.warning('请先填写并保存 API Key')
+  if (createLoading.value) return
+
+  const form = new FormData()
+  if (kind === 't2i') {
+    const prompt = t2i.value.prompt.trim()
+    if (!prompt) return ElMessage.warning('请输入画面描述')
+    form.append('prompt', prompt)
+    if (t2i.value.width) form.append('width', t2i.value.width)
+    if (t2i.value.height) form.append('height', t2i.value.height)
+  } else if (kind === 'i2i') {
+    const prompt = i2i.value.prompt.trim()
+    if (!prompt) return ElMessage.warning('请输入编辑描述')
+    if (!i2i.value.file) return ElMessage.warning('请先选择图片')
+    form.append('file', i2i.value.file)
+    form.append('prompt', prompt)
+  } else {
+    const prompt = video.value.prompt.trim()
+    if (!prompt) return ElMessage.warning('请输入视频描述')
+    form.append('prompt', prompt)
+    form.append('duration', video.value.duration)
+    form.append('motion', video.value.motion)
+  }
+
+  createLoading.value = true
+  createResult.value = null
+  const headers = { Authorization: `Bearer ${apiKey.value}` }
+  try {
+    const submit = await http.post(`/ai/${kind}`, form, { headers, timeout: 180000 })
+    const out = await pollTask(submit.data.task_id, headers)
+    if (!out) {
+      ElMessage.warning('处理仍在进行中，结果会保留，可稍后在控制台任务记录查看')
+      return
+    }
+    const res = { text: out.result_text || '处理完成', kind: out.result_kind, fname: '', url: '' }
+    if (out.result_url) {
+      const name = out.result_url.split('/').pop()
+      const fileResp = await http.get(`/result/${out.task_id}/${name}`, { headers, responseType: 'blob', timeout: 240000 })
+      res.fname = name
+      res.url = URL.createObjectURL(fileResp.data)
+    }
+    createResult.value = res
+    ElMessage.success('生成完成')
+  } catch (e) {
+    const detail = await readErr(e)
+    ElMessage.error('生成失败：' + (detail || '未知错误'))
+  } finally {
+    createLoading.value = false
   }
 }
 </script>

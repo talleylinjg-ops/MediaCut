@@ -16,7 +16,10 @@
       <h3>4. AI 异步任务</h3>
       <pre>{{ aiExample }}</pre>
 
-      <h3>5. 错误码</h3>
+      <h3>5. AI 创作（文生图 / 图生图 / 文生视频）</h3>
+      <pre>{{ createExample }}</pre>
+
+      <h3>6. 错误码</h3>
       <el-table :data="errors" style="margin-top: 8px">
         <el-table-column prop="code" label="状态码" width="90" />
         <el-table-column prop="meaning" label="含义" />
@@ -47,6 +50,24 @@ curl -X POST https://API_HOST/api/v1/ai/matting \\
 
 # 轮询状态
 curl https://API_HOST/api/v1/tasks/{task_id} -H "Authorization: Bearer YOUR_API_KEY"`
+
+const createExample = `# 文生图
+curl -X POST https://API_HOST/api/v1/ai/t2i \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "prompt=赛博朋克城市夜景" -F "width=768" -F "height=768"
+
+# 图生图编辑（multipart 上传原图 + 编辑描述）
+curl -X POST https://API_HOST/api/v1/ai/i2i \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "file=@photo.png" -F "prompt=把背景换成海边日落"
+
+# 文生视频（先生成画面，再添加镜头推拉/平移）
+curl -X POST https://API_HOST/api/v1/ai/video \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "prompt=雪山湖泊，清晨薄雾" -F "duration=5" -F "motion=zoom"
+
+# 三者均为异步任务，提交后轮询 /api/v1/tasks/{task_id}
+# 完成后用 GET /api/v1/result/{task_id}/{filename} 下载结果`
 
 const errors = [
   { code: 401, meaning: 'API Key 无效' },

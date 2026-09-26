@@ -33,13 +33,21 @@
         </el-col>
       </el-row>
       <el-row :gutter="20" style="margin-top: 20px">
-        <el-col :span="12">
+        <el-col :span="8">
+          <el-card>
+            <h3>AI 创作（生成式）</h3>
+            <p>文生图、图生图编辑、文本生成运镜短视频</p>
+            <p><el-tag type="danger">10-20 点 / 次</el-tag></p>
+            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=create')">去创作</el-button>
+          </el-card>
+        </el-col>
+        <el-col :span="8">
           <el-card>
             <h3>异步 AI 任务</h3>
             <p>大模型任务异步排队处理，提交后轮询状态获取结果</p>
           </el-card>
         </el-col>
-        <el-col :span="12">
+        <el-col :span="8">
           <el-card>
             <h3>计费双轨</h3>
             <p>内部调用按每日配额免费使用，对外按接口价格扣减预充值余额</p>

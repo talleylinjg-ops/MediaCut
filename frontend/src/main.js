@@ -23,7 +23,7 @@ const routes = [
     component: PortalHome,
     meta: {
       title: '首页',
-      description: '图片剪辑、音频处理与 AI 能力一站式 HTTP API。支持裁切、缩放、滤镜、水印、格式转换、人像抠图、画质增强、语音识别、语音合成、文生图与图生图编辑。'
+      description: '图片剪辑、音频处理与 AI 能力一站式 HTTP API。支持裁切、缩放、滤镜、水印、格式转换、人像抠图、画质增强、语音识别、语音合成、文生图、图生图编辑与文生视频。'
     }
   },
   {
@@ -60,7 +60,7 @@ const routes = [
     component: ApiPlayground,
     meta: {
       title: '在线试用',
-      description: '在线试用 MediaCut API：直接上传或输入内容体验图片剪辑、音频处理与 AI 能力，无需本地部署。'
+      description: '在线试用 MediaCut API：体验图片剪辑、音频处理、AI 处理以及文生图、图生图编辑、文生视频等生成式能力。'
     }
   },
   {
@@ -107,7 +107,7 @@ router.beforeEach((to) => {
 
 const SITE_NAME = 'MediaCut API'
 const DEFAULT_DESC =
-  '图片剪辑、音频处理与 AI 能力一站式 HTTP API。支持裁切、缩放、滤镜、水印、格式转换、人像抠图、画质增强、语音识别、语音合成、文生图与图生图编辑。'
+  '图片剪辑、音频处理与 AI 能力一站式 HTTP API。支持裁切、缩放、滤镜、水印、格式转换、人像抠图、画质增强、语音识别、语音合成、文生图、图生图编辑与文生视频。'
 
 function setMetaTag(name, content, attr = 'name') {
   let tag = document.head.querySelector(`meta[${attr}="${name}"]`)
