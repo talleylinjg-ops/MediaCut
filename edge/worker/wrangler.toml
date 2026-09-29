@@ -1,0 +1,27 @@
+# MediaCut 边缘前置层（Cloudflare Worker + R2）
+#
+# 部署前需在环境变量中提供（不要写进本文件）：
+#   CLOUDFLARE_API_TOKEN   具有 Workers Scripts:Edit 与 R2:Edit 权限的 Token
+#   CLOUDFLARE_ACCOUNT_ID  Account ID（也可用 `wrangler whoami` 查看）
+#
+# 首次部署：
+#   cd edge/worker && npx wrangler deploy
+#
+# 回源地址与镜像开关改这里，改完重新部署生效。
+
+name = "mediacut-edge"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+workers_dev = true
+
+# 后端源站（VPS 就绪后替换为真实域名/IP）
+[vars]
+ORIGIN = "https://didimedia.com"
+# "1" 表示把回源命中的静态内容写回 R2
+MIRROR_WRITE = "1"
+
+# 静态资源桶（先执行 `npx wrangler r2 bucket create mediacut-static`）
+[[r2_buckets]]
+binding = "STATIC"
+bucket_name = "mediacut-static"
+preview_bucket_name = "mediacut-static"

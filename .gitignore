@@ -180,3 +180,7 @@ backend/test_media.db*
 backend/storage/
 frontend/dist/
 frontend/node_modules/
+didiAI/wp-content/mediacut-config.php
+edge/worker/.wrangler/
+edge/worker/.build/
+edge/worker/node_modules/

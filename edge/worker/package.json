@@ -1,0 +1,16 @@
+{
+  "name": "mediacut-edge-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MediaCut 边缘前置层：R2 静态优先，动态路径回源",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "dry-run": "wrangler deploy --dry-run --outdir=.build",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
