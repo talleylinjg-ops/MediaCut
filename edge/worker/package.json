@@ -8,6 +8,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "dry-run": "wrangler deploy --dry-run --outdir=.build",
+    "test": "node test/consistency.test.mjs",
     "tail": "wrangler tail"
   },
   "devDependencies": {

@@ -19,6 +19,8 @@ workers_dev = true
 ORIGIN = "https://didimedia.com"
 # "1" 表示把回源命中的静态内容写回 R2
 MIRROR_WRITE = "1"
+# "1" 表示对 HTML 页面做源站条件校验，保证页面始终与源站一致
+REVALIDATE_HTML = "1"
 
 # 静态资源桶（先执行 `npx wrangler r2 bucket create mediacut-static`）
 [[r2_buckets]]

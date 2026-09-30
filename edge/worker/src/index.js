@@ -1,22 +1,54 @@
 /**
  * MediaCut 边缘前置层（Cloudflare Worker）
  *
- * 目标（对齐 liangdu 的分层）：
- *   1. 静态资源优先命中 CF Cache → R2，命中即返回 `x-served-from: r2-static`，不回源
- *   2. HTML（SPA）与静态资源全部由 R2 提供，前台浏览不依赖后端容器
- *   3. R2 未命中时回源一次，并把可缓存内容写入 R2（`x-served-from: origin-mirrored`）
- *   4. 仅动态路径回源：/api/、/static/、/docs、/redoc、/openapi.json、/health
+ * 目标：边缘对外提供的静态页面与源站完全一致（内容逐字节相同、响应头原样回放）。
+ *
+ * 分层：
+ *   1. 动态路径直接回源：/api/、/static/、/docs、/redoc、/openapi.json、/health
+ *   2. HTML 页面（/、/ 无扩展名路由、*.html）：
+ *        REVALIDATE_HTML=1 时对源站做条件请求（If-None-Match）——
+ *          源站 304 → 返回 R2 快照；源站 200 → 更新 R2 快照并返回源站版本；
+ *          源站不可达 → 返回 R2 快照。保证页面始终与源站一致，且源站宕机仍可访问。
+ *        REVALIDATE_HTML=0 时直接返回 R2 快照。
+ *   3. 其它静态资源：CF Cache → R2；R2 未命中回源，并把「响应体 + 源站响应头」写入 R2。
+ *      支持 Range 请求。
+ *
+ * 关键原则：不注入、不覆盖源站响应头。R2 快照会保存镜像时刻的源站响应头并原样回放；
+ * 只有快照缺失响应头时才按扩展名兜底 content-type。
  *
  * 绑定与变量（见 wrangler.toml）：
- *   STATIC        R2 绑定
- *   ORIGIN        后端源站地址，例如 https://didimedia.com
- *   MIRROR_WRITE  "1" 时把回源命中的静态内容写入 R2
+ *   STATIC          R2 绑定
+ *   ORIGIN          后端源站地址，例如 https://didimedia.com
+ *   MIRROR_WRITE    "1" 时把回源命中的静态内容写入 R2
+ *   REVALIDATE_HTML "1" 时对 HTML 页面做条件校验（默认行为，可关闭）
  *
  * 请求头回执：x-served-from = cache | r2-static | origin-mirrored | origin
  */
 
 const ORIGIN_EXACT = new Set(['/openapi.json', '/health']);
 const ORIGIN_PREFIXES = ['/api/', '/static/', '/docs', '/redoc'];
+
+// 逐跳头与 Cloudflare 自行管理的头，不能/无需回放
+const NON_REPLAYABLE = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+  'content-encoding',
+  'content-length',
+  'server',
+  'date',
+  'expect-ct',
+  'report-to',
+  'nel',
+  'alt-svc',
+  'cf-ray',
+  'cf-cache-status'
+]);
 
 const MIME = {
   html: 'text/html; charset=utf-8',
@@ -68,36 +100,75 @@ function mimeFor(key) {
   return MIME[ext] || 'application/octet-stream';
 }
 
-/** @param {string} key */
-function cacheControlFor(key) {
-  if (key.startsWith('assets/')) return 'public, max-age=31536000, immutable';
-  if (key.endsWith('index.html')) return 'no-store';
-  return 'public, max-age=3600';
+/** HTML 页面（含 SPA 回退）与普通静态资源的区分 */
+function resolveKey(path) {
+  if (!hasExtension(path)) return { key: 'index.html', isHtml: true, fallback: true };
+  const key = keyFor(path);
+  return { key, isHtml: key.endsWith('.html'), fallback: false };
 }
 
-/** @param {string} key */
-function isCacheable(key) {
-  return !key.endsWith('index.html');
+/** @param {Headers} headers */
+function captureHeaders(headers) {
+  const out = {};
+  headers.forEach((value, name) => {
+    const key = name.toLowerCase();
+    if (NON_REPLAYABLE.has(key)) return;
+    out[key] = value;
+  });
+  return out;
 }
 
 /**
- * @param {Headers} headers
- * @returns {Headers}
+ * 由快照元数据构造响应头：优先原样回放源站响应头，缺失时才兜底。
+ *
+ * @param {Record<string, string>|null} stored
+ * @param {string} key
  */
-function applySecurityHeaders(headers) {
-  headers.set('x-content-type-options', 'nosniff');
-  headers.set('x-frame-options', 'SAMEORIGIN');
-  headers.set('referrer-policy', 'strict-origin-when-cross-origin');
-  headers.set('permissions-policy', 'geolocation=(), microphone=(), camera=()');
+function buildHeaders(stored, key) {
+  const headers = new Headers();
+  if (stored) {
+    for (const [name, value] of Object.entries(stored)) headers.set(name, value);
+  }
+  if (!headers.has('content-type')) headers.set('content-type', mimeFor(key));
+  if (!headers.has('accept-ranges')) headers.set('accept-ranges', 'bytes');
   return headers;
+}
+
+/** @param {any} object R2 对象 */
+function storedHeadersOf(object) {
+  const raw = object && object.customMetadata && object.customMetadata.headers;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * @param {Request} request
  * @param {any} env
- * @returns {Promise<Response>}
+ * @param {{ waitUntil: (p: Promise<unknown>) => void }} ctx
+ * @param {string} key
  */
-async function proxyToOrigin(request, env) {
+async function writeSnapshot(env, ctx, key, body, contentType, headers) {
+  if (env.MIRROR_WRITE !== '1') return;
+  const options = {
+    httpMetadata: { contentType: contentType || mimeFor(key) },
+    customMetadata: { headers: JSON.stringify(headers) }
+  };
+  ctx.waitUntil(env.STATIC.put(key, body, options));
+}
+
+/**
+ * 直通源站：响应头与响应体均不修改。
+ *
+ * @param {Request} request
+ * @param {any} env
+ * @param {string} [marker]
+ */
+async function proxyToOrigin(request, env, marker) {
   const url = new URL(request.url);
   const target = new URL(url.pathname + url.search, env.ORIGIN);
   const method = request.method.toUpperCase();
@@ -107,23 +178,161 @@ async function proxyToOrigin(request, env) {
     body: method === 'GET' || method === 'HEAD' ? null : request.body,
     redirect: 'manual'
   });
-  const out = new Response(resp.body, resp);
-  applySecurityHeaders(out.headers);
-  out.headers.set('x-served-from', 'origin');
+  const out = new Response(resp.body, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: resp.headers
+  });
+  out.headers.set('x-served-from', marker || 'origin');
   return out;
 }
 
+/** @param {any} object R2 对象 */
+function serveSnapshot(request, object, key, marker) {
+  const headers = buildHeaders(storedHeadersOf(object), key);
+  let status = 200;
+  if (object.range) {
+    const start = object.range.offset;
+    const end = object.range.offset + object.range.length - 1;
+    headers.set('content-range', `bytes ${start}-${end}/${object.size}`);
+    status = 206;
+  }
+  const body = request.method === 'HEAD' ? null : object.body;
+  const resp = new Response(body, { status, headers });
+  resp.headers.set('x-served-from', marker);
+  return resp;
+}
+
 /**
- * R2 未命中时回源，并把静态内容写入 R2。
+ * HTML 页面：条件请求校验，保证与源站一致。
  *
  * @param {Request} request
  * @param {any} env
  * @param {{ waitUntil: (p: Promise<unknown>) => void }} ctx
  * @param {string} key
- * @returns {Promise<Response>}
+ * @param {string} path
  */
-async function mirrorFromOrigin(request, env, ctx, key) {
-  const resp = await proxyToOrigin(request, env);
+async function serveHtml(request, env, ctx, key, path) {
+  const snapshot = await env.STATIC.get(key);
+  const stored = storedHeadersOf(snapshot);
+
+  if (request.method === 'HEAD' || env.REVALIDATE_HTML !== '1') {
+    if (snapshot) return serveSnapshot(request, snapshot, key, 'r2-static');
+    return mirrorFallback(request, env, ctx, key, path);
+  }
+
+  const url = new URL(request.url);
+  const target = new URL(url.pathname + url.search, env.ORIGIN);
+  const reqHeaders = new Headers();
+  if (stored && stored.etag) reqHeaders.set('if-none-match', stored.etag);
+  else if (snapshot && snapshot.httpEtag) reqHeaders.set('if-none-match', snapshot.httpEtag);
+
+  let resp = null;
+  try {
+    resp = await fetch(target.toString(), {
+      method: 'GET',
+      headers: reqHeaders,
+      redirect: 'manual'
+    });
+  } catch {
+    resp = null;
+  }
+
+  if (resp && resp.status === 304 && snapshot) {
+    return serveSnapshot(request, snapshot, key, 'r2-static');
+  }
+
+  if (resp && resp.status === 200) {
+    const type = resp.headers.get('content-type') || '';
+    if (STATIC_CONTENT_TYPE.test(type)) {
+      const buf = await resp.arrayBuffer();
+      const headers = captureHeaders(resp.headers);
+      await writeSnapshot(env, ctx, key, buf, type, headers);
+      const out = new Response(buf, { status: 200, headers: buildHeaders(headers, key) });
+      out.headers.set('x-served-from', 'origin-mirrored');
+      return out;
+    }
+    return passthrough(resp);
+  }
+
+  if (resp) return passthrough(resp);
+  if (snapshot) return serveSnapshot(request, snapshot, key, 'r2-static');
+  return new Response('origin unavailable', { status: 502 });
+}
+
+/**
+ * 静态资源：CF Cache → R2 → 回源镜像。
+ *
+ * @param {Request} request
+ * @param {any} env
+ * @param {{ waitUntil: (p: Promise<unknown>) => void }} ctx
+ * @param {string} key
+ * @param {string} path
+ */
+async function serveAsset(request, env, ctx, key, path) {
+  const wantsRange = request.headers.has('range');
+
+  if (request.method === 'GET' && !wantsRange) {
+    const hit = await caches.default.match(request);
+    if (hit) {
+      const out = new Response(hit.body, {
+        status: hit.status,
+        statusText: hit.statusText,
+        headers: hit.headers
+      });
+      out.headers.set('x-served-from', 'cache');
+      return out;
+    }
+  }
+
+  const options = wantsRange ? { range: request.headers } : undefined;
+  let object = await env.STATIC.get(key, options);
+  let servedKey = key;
+  if (!object && !hasExtension(path)) {
+    object = await env.STATIC.get('index.html', options);
+    servedKey = 'index.html';
+  }
+
+  if (object) {
+    const resp = serveSnapshot(request, object, servedKey, 'r2-static');
+    const cacheControl = resp.headers.get('cache-control') || '';
+    if (
+      request.method === 'GET' &&
+      !object.range &&
+      !/no-store|private/i.test(cacheControl)
+    ) {
+      ctx.waitUntil(caches.default.put(request, resp.clone()));
+    }
+    return resp;
+  }
+
+  return mirrorFallback(request, env, ctx, servedKey, path);
+}
+
+/**
+ * R2 未命中时回源：原样返回源站响应，并在可镜像时把「响应体 + 响应头」写入 R2。
+ *
+ * @param {Request} request
+ * @param {any} env
+ * @param {{ waitUntil: (p: Promise<unknown>) => void }} ctx
+ * @param {string} key
+ * @param {string} path
+ */
+async function mirrorFallback(request, env, ctx, key, path) {
+  const url = new URL(request.url);
+  const target = new URL(url.pathname + url.search, env.ORIGIN);
+  let resp;
+  try {
+    resp = await fetch(target.toString(), {
+      method: request.method,
+      headers: request.headers,
+      body: request.method === 'GET' || request.method === 'HEAD' ? null : request.body,
+      redirect: 'manual'
+    });
+  } catch {
+    return new Response('origin unavailable', { status: 502 });
+  }
+
   const type = resp.headers.get('content-type') || '';
   const shouldMirror =
     request.method === 'GET' &&
@@ -131,15 +340,23 @@ async function mirrorFromOrigin(request, env, ctx, key) {
     env.MIRROR_WRITE === '1' &&
     STATIC_CONTENT_TYPE.test(type);
 
-  if (shouldMirror) {
-    const toStore = resp.clone();
-    ctx.waitUntil(env.STATIC.put(key, toStore.body, { httpMetadata: { contentType: type } }));
-    const out = new Response(resp.body, resp);
-    applySecurityHeaders(out.headers);
-    out.headers.set('x-served-from', 'origin-mirrored');
-    return out;
-  }
-  return resp;
+  if (!shouldMirror) return passthrough(resp);
+
+  const buf = await resp.arrayBuffer();
+  const headers = captureHeaders(resp.headers);
+  await writeSnapshot(env, ctx, key, buf, type, headers);
+  const out = new Response(buf, { status: 200, headers: buildHeaders(headers, key) });
+  out.headers.set('x-served-from', 'origin-mirrored');
+  return out;
+}
+
+/** @param {Response} resp */
+function passthrough(resp) {
+  return new Response(resp.body, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: resp.headers
+  });
 }
 
 export default {
@@ -158,51 +375,13 @@ export default {
       path = url.pathname;
     }
 
-    if (isOriginPath(path)) {
-      return proxyToOrigin(request, env);
-    }
+    if (isOriginPath(path)) return proxyToOrigin(request, env);
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return proxyToOrigin(request, env);
     }
 
-    if (request.method === 'GET') {
-      const hit = await caches.default.match(request);
-      if (hit) {
-        const out = new Response(hit.body, hit);
-        applySecurityHeaders(out.headers);
-        out.headers.set('x-served-from', 'cache');
-        return out;
-      }
-    }
-
-    const key = keyFor(path);
-    let stored = await env.STATIC.get(key);
-    let servedKey = key;
-    if (!stored && !hasExtension(path)) {
-      stored = await env.STATIC.get('index.html');
-      servedKey = 'index.html';
-    }
-
-    if (stored) {
-      const headers = new Headers();
-      stored.writeHttpMetadata(headers);
-      headers.set('etag', stored.httpEtag);
-      const currentType = headers.get('content-type') || '';
-      if (!currentType || currentType === 'application/octet-stream') {
-        headers.set('content-type', mimeFor(servedKey));
-      }
-      headers.set('cache-control', cacheControlFor(servedKey));
-      applySecurityHeaders(headers);
-      headers.set('x-served-from', 'r2-static');
-
-      const body = request.method === 'HEAD' ? null : stored.body;
-      const resp = new Response(body, { headers });
-      if (request.method === 'GET' && isCacheable(servedKey)) {
-        ctx.waitUntil(caches.default.put(request, resp.clone()));
-      }
-      return resp;
-    }
-
-    return mirrorFromOrigin(request, env, ctx, key);
+    const { key, isHtml } = resolveKey(path);
+    if (isHtml) return serveHtml(request, env, ctx, key, path);
+    return serveAsset(request, env, ctx, key, path);
   }
 };
