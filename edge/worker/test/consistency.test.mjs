@@ -196,6 +196,14 @@ r = await call('/', null, { REVALIDATE_HTML: '0' });
 assert.equal(r.headers.get('x-served-from'), 'r2-static');
 assert.equal(await r.text(), origin.indexBody);
 
+// J2. 快照缺少 cache-control 时，HTML 兜底为源站同款 no-cache
+store.set('page.html', { bytes: toBytes('<!doctype html><p>snap</p>'), customMetadata: {}, httpMetadata: {} });
+cacheStore.clear();
+r = await call('/page.html', null, { REVALIDATE_HTML: '0' });
+assert.equal(r.headers.get('x-served-from'), 'r2-static');
+assert.equal(r.headers.get('content-type'), 'text/html; charset=utf-8');
+assert.equal(r.headers.get('cache-control'), 'no-cache, must-revalidate');
+
 // K. 非 GET/HEAD 直通源站
 r = await call('/webhook/hook', { method: 'POST', body: 'x' });
 assert.equal(r.headers.get('x-served-from'), 'origin');
@@ -208,4 +216,4 @@ assert.equal(r.headers.get('x-served-from'), 'r2-static');
 assert.equal(await r.text(), 'didimedia.com');
 
 globalThis.fetch = realFetch;
-console.log('边缘一致性校验全部通过（12 项）');
+console.log('边缘一致性校验全部通过（13 项）');

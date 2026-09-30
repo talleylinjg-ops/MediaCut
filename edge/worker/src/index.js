@@ -9,7 +9,7 @@
  *        REVALIDATE_HTML=1 时对源站做条件请求（If-None-Match）——
  *          源站 304 → 返回 R2 快照；源站 200 → 更新 R2 快照并返回源站版本；
  *          源站不可达 → 返回 R2 快照。保证页面始终与源站一致，且源站宕机仍可访问。
- *        REVALIDATE_HTML=0 时直接返回 R2 快照。
+ *        REVALIDATE_HTML=0 时直接返回 R2 快照（当前部署默认，纯边缘快照）。
  *   3. 其它静态资源：CF Cache → R2；R2 未命中回源，并把「响应体 + 源站响应头」写入 R2。
  *      支持 Range 请求。
  *
@@ -132,6 +132,10 @@ function buildHeaders(stored, key) {
   }
   if (!headers.has('content-type')) headers.set('content-type', mimeFor(key));
   if (!headers.has('accept-ranges')) headers.set('accept-ranges', 'bytes');
+  // 与源站对 HTML 的处理保持一致，避免边缘/浏览器缓存住旧页面
+  if (key.endsWith('.html') && !headers.has('cache-control')) {
+    headers.set('cache-control', 'no-cache, must-revalidate');
+  }
   return headers;
 }
 
