@@ -102,9 +102,10 @@ function mimeFor(key) {
 
 /** HTML 页面（含 SPA 回退）与普通静态资源的区分 */
 function resolveKey(path) {
-  if (!hasExtension(path)) return { key: 'index.html', isHtml: true, fallback: true };
   const key = keyFor(path);
-  return { key, isHtml: key.endsWith('.html'), fallback: false };
+  if (key.endsWith('.html')) return { key, isHtml: true, spaFallback: false };
+  if (!hasExtension(path)) return { key, isHtml: false, spaFallback: true };
+  return { key, isHtml: false, spaFallback: false };
 }
 
 /** @param {Headers} headers */
@@ -286,15 +287,10 @@ async function serveAsset(request, env, ctx, key, path) {
   }
 
   const options = wantsRange ? { range: request.headers } : undefined;
-  let object = await env.STATIC.get(key, options);
-  let servedKey = key;
-  if (!object && !hasExtension(path)) {
-    object = await env.STATIC.get('index.html', options);
-    servedKey = 'index.html';
-  }
+  const object = await env.STATIC.get(key, options);
 
   if (object) {
-    const resp = serveSnapshot(request, object, servedKey, 'r2-static');
+    const resp = serveSnapshot(request, object, key, 'r2-static');
     const cacheControl = resp.headers.get('cache-control') || '';
     if (
       request.method === 'GET' &&
@@ -306,7 +302,7 @@ async function serveAsset(request, env, ctx, key, path) {
     return resp;
   }
 
-  return mirrorFallback(request, env, ctx, servedKey, path);
+  return mirrorFallback(request, env, ctx, key, path);
 }
 
 /**
@@ -380,8 +376,13 @@ export default {
       return proxyToOrigin(request, env);
     }
 
-    const { key, isHtml } = resolveKey(path);
+    const { key, isHtml, spaFallback } = resolveKey(path);
     if (isHtml) return serveHtml(request, env, ctx, key, path);
+    if (spaFallback) {
+      const exact = await env.STATIC.get(key);
+      if (exact) return serveAsset(request, env, ctx, key, path);
+      return serveHtml(request, env, ctx, 'index.html', path);
+    }
     return serveAsset(request, env, ctx, key, path);
   }
 };

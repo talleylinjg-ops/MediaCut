@@ -200,5 +200,12 @@ assert.equal(await r.text(), origin.indexBody);
 r = await call('/webhook/hook', { method: 'POST', body: 'x' });
 assert.equal(r.headers.get('x-served-from'), 'origin');
 
+// L. 无扩展名的真实文件（如 CNAME）→ 按静态资源返回，不回退到页面
+store.set('CNAME', { bytes: toBytes('didimedia.com'), customMetadata: {}, httpMetadata: {} });
+cacheStore.clear();
+r = await call('/CNAME');
+assert.equal(r.headers.get('x-served-from'), 'r2-static');
+assert.equal(await r.text(), 'didimedia.com');
+
 globalThis.fetch = realFetch;
-console.log('边缘一致性校验全部通过（11 项）');
+console.log('边缘一致性校验全部通过（12 项）');
