@@ -146,7 +146,7 @@
           :closable="false"
           show-icon
           style="margin-bottom: 12px"
-          title="文生图、图生图编辑与文生视频。文生图可直接使用免费通道；图生图与视频需要已配置对应的图片生成/编辑渠道。"
+          title="文生图、图生图编辑、文生视频、语音合成、人像抠图、画质增强与语音识别。文生图可直接使用免费通道；图生图与视频需要已配置对应的图片生成/编辑渠道。"
         />
         <el-tabs v-model="createTab">
           <el-tab-pane label="文生图" name="t2i">
@@ -172,12 +172,11 @@
               placeholder="例如：把背景换成海边日落"
             />
             <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap">
-              <el-button plain @click="pickCreateImage">选择图片</el-button>
+              <el-button plain @click="pickCreateFile('i2i')">选择图片</el-button>
               <span v-if="i2i.file" style="font-size: 13px; color: #67c23a">{{ i2i.file.name }}</span>
               <span v-else style="font-size: 12px; color: #909399">需先选择一张图片</span>
               <el-button type="primary" :loading="createLoading" @click="runTool('i2i')">生成</el-button>
             </div>
-            <input ref="createImageInput" type="file" accept="image/*" style="display: none" @change="onCreateImage" />
           </el-tab-pane>
           <el-tab-pane label="文生视频" name="video">
             <el-input
@@ -204,7 +203,44 @@
               title="该能力先生成画面再做镜头推拉/平移，画面内容本身不会运动。"
             />
           </el-tab-pane>
+          <el-tab-pane label="语音合成" name="tts">
+            <el-input
+              v-model="tts.text"
+              type="textarea"
+              :rows="2"
+              placeholder="例如：欢迎使用 MediaCut 媒体处理 API"
+            />
+            <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap">
+              <span style="font-size: 12px; color: #909399">默认中文女声，输出 MP3</span>
+              <el-button type="primary" :loading="createLoading" @click="runTool('tts')">合成语音</el-button>
+            </div>
+          </el-tab-pane>
+          <el-tab-pane label="人像抠图" name="matting">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+              <el-button plain @click="pickCreateFile('matting')">选择图片</el-button>
+              <span v-if="matting.file" style="font-size: 13px; color: #67c23a">{{ matting.file.name }}</span>
+              <span v-else style="font-size: 12px; color: #909399">需先选择一张图片</span>
+              <el-button type="primary" :loading="createLoading" @click="runTool('matting')">开始抠图</el-button>
+            </div>
+          </el-tab-pane>
+          <el-tab-pane label="画质增强" name="enhance">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+              <el-button plain @click="pickCreateFile('enhance')">选择图片</el-button>
+              <span v-if="enhance.file" style="font-size: 13px; color: #67c23a">{{ enhance.file.name }}</span>
+              <span v-else style="font-size: 12px; color: #909399">需先选择一张图片</span>
+              <el-button type="primary" :loading="createLoading" @click="runTool('enhance')">开始增强</el-button>
+            </div>
+          </el-tab-pane>
+          <el-tab-pane label="语音识别" name="asr">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+              <el-button plain @click="pickCreateFile('asr')">选择音频</el-button>
+              <span v-if="asr.file" style="font-size: 13px; color: #67c23a">{{ asr.file.name }}</span>
+              <span v-else style="font-size: 12px; color: #909399">支持 mp3/wav/m4a 等，需先选择音频</span>
+              <el-button type="primary" :loading="createLoading" @click="runTool('asr')">识别文字</el-button>
+            </div>
+          </el-tab-pane>
         </el-tabs>
+        <input ref="createFileInput" type="file" :accept="createAccept" style="display: none" @change="onCreateFile" />
         <div v-if="createResult" style="margin-top: 12px">
           <div style="font-size: 13px; color: #909399">{{ createResult.text }}</div>
           <img
@@ -237,7 +273,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import http from '../../api'
 import { onAuthChange } from '../../utils/auth'
 import PortalNav from '../../components/PortalNav.vue'
@@ -265,10 +300,17 @@ const createCard = ref(null)
 const createTab = ref('t2i')
 const createLoading = ref(false)
 const createResult = ref(null)
-const createImageInput = ref(null)
+const createFileInput = ref(null)
+const createFileTarget = ref('')
 const t2i = ref({ prompt: '', width: 768, height: 768 })
 const i2i = ref({ prompt: '', file: null })
 const video = ref({ prompt: '', duration: 5, motion: 'zoom' })
+const tts = ref({ text: '' })
+const matting = ref({ file: null })
+const enhance = ref({ file: null })
+const asr = ref({ file: null })
+const createAccept = computed(() => (createFileTarget.value === 'asr' ? 'audio/*' : 'image/*'))
+const CREATE_TABS = ['t2i', 'i2i', 'video', 'tts', 'matting', 'enhance', 'asr']
 
 onMounted(async () => {
   const hasLogin = !!localStorage.getItem('client_token')
@@ -290,8 +332,8 @@ onMounted(async () => {
     await validateKey(true)
   }
   const tab = route.query.tab
-  if (tab && ['t2i', 'i2i', 'video'].includes(tab)) createTab.value = tab
-  if (tab === 'create' || ['t2i', 'i2i', 'video'].includes(tab)) {
+  if (tab && CREATE_TABS.includes(tab)) createTab.value = tab
+  if (tab === 'create' || CREATE_TABS.includes(tab)) {
     nextTick(() => createCard.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 })
@@ -545,13 +587,20 @@ async function sendChat() {
   }
 }
 
-function pickCreateImage() {
-  createImageInput.value?.click()
+function pickCreateFile(target) {
+  createFileTarget.value = target
+  createFileInput.value?.click()
 }
 
-function onCreateImage(e) {
+function onCreateFile(e) {
   const f = e.target.files[0]
-  if (f) i2i.value.file = f
+  const target = createFileTarget.value
+  if (f) {
+    if (target === 'i2i') i2i.value.file = f
+    else if (target === 'matting') matting.value.file = f
+    else if (target === 'enhance') enhance.value.file = f
+    else if (target === 'asr') asr.value.file = f
+  }
   e.target.value = ''
 }
 
@@ -582,6 +631,14 @@ async function runTool(kind) {
     if (!i2i.value.file) return ElMessage.warning('请先选择图片')
     form.append('file', i2i.value.file)
     form.append('prompt', prompt)
+  } else if (kind === 'tts') {
+    const text = tts.value.text.trim()
+    if (!text) return ElMessage.warning('请输入要合成的文字')
+    form.append('text', text)
+  } else if (kind === 'matting' || kind === 'enhance' || kind === 'asr') {
+    const file = kind === 'matting' ? matting.value.file : kind === 'enhance' ? enhance.value.file : asr.value.file
+    if (!file) return ElMessage.warning(kind === 'asr' ? '请先选择音频' : '请先选择图片')
+    form.append('file', file)
   } else {
     const prompt = video.value.prompt.trim()
     if (!prompt) return ElMessage.warning('请输入视频描述')

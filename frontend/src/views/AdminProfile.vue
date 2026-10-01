@@ -173,7 +173,6 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import http from '../api'
 import { clearAdminToken } from '../utils/auth'
 import AdminShell from '../components/AdminShell.vue'

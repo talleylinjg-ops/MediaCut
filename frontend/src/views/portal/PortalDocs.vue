@@ -66,7 +66,22 @@ curl -X POST https://API_HOST/api/v1/ai/video \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -F "prompt=雪山湖泊，清晨薄雾" -F "duration=5" -F "motion=zoom"
 
-# 三者均为异步任务，提交后轮询 /api/v1/tasks/{task_id}
+# 语音合成
+curl -X POST https://API_HOST/api/v1/ai/tts \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "text=欢迎使用 MediaCut" -F "voice=zh-CN-XiaoxiaoNeural"
+
+# 语音识别（上传音频返回文本）
+curl -X POST https://API_HOST/api/v1/ai/asr \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "file=@speech.mp3"
+
+# 画质增强（上传图片）
+curl -X POST https://API_HOST/api/v1/ai/enhance \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "file=@photo.png"
+
+# 以上均为异步任务，提交后轮询 /api/v1/tasks/{task_id}
 # 完成后用 GET /api/v1/result/{task_id}/{filename} 下载结果`
 
 const errors = [

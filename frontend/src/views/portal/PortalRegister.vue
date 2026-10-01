@@ -42,7 +42,6 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import http from '../../api'
 import { clearClientToken } from '../../utils/auth'
 import PortalNav from '../../components/PortalNav.vue'

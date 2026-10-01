@@ -1,21 +1,20 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
 import App from './App.vue'
-import Login from './views/Login.vue'
-import AdminHome from './views/AdminHome.vue'
-import AdminProfile from './views/AdminProfile.vue'
-import Developers from './views/Developers.vue'
-import Stats from './views/Stats.vue'
-import PortalHome from './views/portal/PortalHome.vue'
-import PortalPricing from './views/portal/PortalPricing.vue'
-import PortalRegister from './views/portal/PortalRegister.vue'
-import PortalDocs from './views/portal/PortalDocs.vue'
-import ClientLogin from './views/portal/ClientLogin.vue'
-import ClientConsole from './views/portal/ClientConsole.vue'
-import ApiPlayground from './views/portal/ApiPlayground.vue'
-import SwaggerDoc from './views/SwaggerDoc.vue'
+
+const Login = () => import('./views/Login.vue')
+const AdminHome = () => import('./views/AdminHome.vue')
+const AdminProfile = () => import('./views/AdminProfile.vue')
+const Developers = () => import('./views/Developers.vue')
+const Stats = () => import('./views/Stats.vue')
+const PortalHome = () => import('./views/portal/PortalHome.vue')
+const PortalPricing = () => import('./views/portal/PortalPricing.vue')
+const PortalRegister = () => import('./views/portal/PortalRegister.vue')
+const PortalDocs = () => import('./views/portal/PortalDocs.vue')
+const ClientLogin = () => import('./views/portal/ClientLogin.vue')
+const ClientConsole = () => import('./views/portal/ClientConsole.vue')
+const ApiPlayground = () => import('./views/portal/ApiPlayground.vue')
+const SwaggerDoc = () => import('./views/SwaggerDoc.vue')
 
 const routes = [
   {
@@ -140,4 +139,4 @@ function setCanonical(path) {
   link.setAttribute('href', SITE_ORIGIN + path)
 }
 
-createApp(App).use(router).use(ElementPlus).mount('#app')
+createApp(App).use(router).mount('#app')

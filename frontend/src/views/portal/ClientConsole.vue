@@ -170,7 +170,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import QRCode from 'qrcode'
 import http from '../../api'
 import { clearClientToken } from '../../utils/auth'

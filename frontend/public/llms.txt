@@ -15,6 +15,7 @@
 
 - 所有业务接口使用 `Authorization: Bearer <API_KEY>` 请求头认证。
 - 同步接口直接返回处理结果；异步接口提交后返回任务 ID，通过轮询任务状态获取结果。
+- 异步接口字段约定：`t2i`/`i2i`/`video` 用 `prompt`（i2i 另传 `file`），`tts` 用 `text`，`matting`/`enhance`/`asr` 用 `file`。
 - 图片、音频与 AI 处理均以 HTTP 接口提供，可直接接入现有服务。
 
 ## 主要接口

@@ -110,7 +110,6 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
 import http from '../api'
 import AdminShell from '../components/AdminShell.vue'
 

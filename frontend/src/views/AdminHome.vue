@@ -47,7 +47,6 @@
 
 <script setup>
 import { onMounted, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
 import http from '../api'
 import AdminShell from '../components/AdminShell.vue'
 

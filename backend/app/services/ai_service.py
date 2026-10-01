@@ -159,10 +159,11 @@ def _t2i_pollinations(prompt: str, width: int, height: int) -> bytes:
     from urllib.parse import quote
 
     url = POLLINATIONS_IMG_URL.format(prompt=quote(prompt))
+    timeout = httpx.Timeout(connect=8.0, read=70.0, write=10.0, pool=10.0)
     resp = httpx.get(
         url,
         params={"width": width, "height": height, "nologo": "true", "seed": uuid.uuid4().int % (2**31)},
-        timeout=90,
+        timeout=timeout,
         follow_redirects=True,
     )
     resp.raise_for_status()
@@ -325,12 +326,16 @@ def run_t2i(prompt: str, output_dir: str, width: int = 1024, height: int = 1024)
         except Exception:
             continue
     sizes = []
-    for pair in ((width, height), (768, 768), (512, 512)):
+    for pair in ((width, height), (512, 512)):
         if pair[0] and pair[1] and pair not in sizes:
             sizes.append(pair)
+    import httpx
+
     for w, h in sizes:
         try:
             return _save_image_bytes(_t2i_pollinations(prompt, w, h), output_dir)
+        except (httpx.ConnectError, httpx.ConnectTimeout):
+            break
         except Exception:
             continue
     return _save_image_bytes(_t2i_modelscope(prompt, width, height), output_dir)

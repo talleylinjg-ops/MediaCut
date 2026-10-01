@@ -18,7 +18,6 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import http from '../api'
 import { setAdminToken } from '../utils/auth'
 

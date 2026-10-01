@@ -44,7 +44,7 @@ def test_run_t2i_falls_back_to_smaller_size(monkeypatch, tmp_path):
     filename = ai_service.run_t2i("赛博朋克城市夜景", str(tmp_path), 1024, 1024)
 
     assert (1024, 1024) in tried
-    assert (768, 768) in tried
+    assert (512, 512) in tried
     assert filename.endswith(".png")
     assert (tmp_path / filename).exists()
 

@@ -35,8 +35,8 @@
       <el-row :gutter="20" style="margin-top: 20px">
         <el-col :span="8">
           <el-card>
-            <h3>AI 创作（生成式）</h3>
-            <p>文生图、图生图编辑、文本生成运镜短视频</p>
+            <h3>AI 创作与工具</h3>
+            <p>文生图、图生图编辑、文生视频、语音合成、人像抠图、画质增强、语音识别</p>
             <p><el-tag type="danger">10-20 点 / 次</el-tag></p>
             <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=create')">去创作</el-button>
           </el-card>
