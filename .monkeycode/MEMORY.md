@@ -52,3 +52,12 @@ Entries discovered by the Agent during task execution should follow this format:
   - SQLite 多线程场景必须启用 WAL 模式与 busy_timeout（见 `backend/app/database.py` 的 PRAGMA 事件），否则并发写会报 "database is locked" 导致任务状态卡住
   - 同一 SQLAlchemy session 复用时存在事务快照问题：轮询任务状态时需每次新开 session（或先 commit 结束只读事务），否则读不到其他线程的写入
   - 任务对外 ID 用 UUID（`task.task_id`），与数据库自增主键（`task.id`）区分；线程调度用主键，API 层用 UUID
+
+[Project Knowledge Summary]
+- Date: 2026-10-02
+- Context: Discovered by Agent while confirming integration status with the user
+- Category: Operations & Deployment
+- Instructions:
+  - didi AI（WordPress 主题）已由用户在其侧接入 MediaCut API 并确认可用；工作区内 `didiAI/` 只是适配层副本，无需再做 functions.php 接入
+  - 边缘「完全一致」校验：`bash edge/verify-consistency.sh --origin <源站> [--edge <边缘>]`，对比 dist 全部文件与 SPA 路由的状态码/content-type/字节；deploy-edge.sh 的 MIME 映射已对齐源站 uvicorn（xml 无 charset、ico 为 image/vnd.microsoft.icon），改 MIME 需同步 edge/worker/src/index.js 的 MIME 表
+  - 路由归属：`/docs` = 前端接入文档页（PortalDocs），`/api-docs`、`/api-redoc` = 后端 Swagger/Redoc，`/docs` 在边缘 Worker 走 SPA 快照而非回源

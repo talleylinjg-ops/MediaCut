@@ -60,13 +60,13 @@ content_type_for() {
     css) echo 'text/css; charset=utf-8' ;;
     json|map) echo 'application/json; charset=utf-8' ;;
     txt) echo 'text/plain; charset=utf-8' ;;
-    xml) echo 'application/xml; charset=utf-8' ;;
+    xml) echo 'application/xml' ;;
     svg) echo 'image/svg+xml' ;;
     png) echo 'image/png' ;;
     jpg|jpeg) echo 'image/jpeg' ;;
     webp) echo 'image/webp' ;;
     gif) echo 'image/gif' ;;
-    ico) echo 'image/x-icon' ;;
+    ico) echo 'image/vnd.microsoft.icon' ;;
     webmanifest) echo 'application/manifest+json' ;;
     woff2) echo 'font/woff2' ;;
     woff) echo 'font/woff' ;;
