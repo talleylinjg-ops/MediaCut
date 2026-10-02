@@ -1,3 +1,4 @@
+# 搜索引擎爬虫
 User-agent: *
 Allow: /
 Disallow: /admin
@@ -8,4 +9,74 @@ Disallow: /client/console
 Disallow: /login
 Disallow: /api/
 
+# AI / 生成式引擎爬虫（GEO：允许抓取以被 AI 搜索引用）
+User-agent: GPTBot
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: Amazonbot
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
+User-agent: meta-externalagent
+Allow: /
+Disallow: /admin
+Disallow: /client/console
+Disallow: /api/
+
 Sitemap: https://didimedia.com/sitemap.xml
+
+# 面向 AI 与 LLM 的站点说明: https://didimedia.com/llms.txt
+# 面向 AI 与 LLM 的完整站点内容: https://didimedia.com/llms-full.txt

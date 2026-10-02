@@ -1,34 +1,27 @@
 # MediaCut API
 
-> 面向开发者的媒体处理 API 服务平台。提供图片剪辑（裁切/缩放/滤镜/水印/格式转换）、音频剪辑（裁剪/音量调整/格式转换）、AI 能力（人像抠图、画质增强、语音识别、语音合成、文生图、图生图编辑、文本或图片生成运镜短视频）。通过标准 HTTP 接口接入，按量计费并提供免费额度。
+> 面向开发者的媒体处理 API 服务平台。提供图片剪辑（裁切/缩放/滤镜/水印/格式转换）、音频剪辑（裁剪/拼接/音量调整/格式转换）与 AI 能力（人像抠图、画质增强、语音识别、语音合成、文生图、图生图编辑、文生视频画面+运镜、对话式剪辑）。标准 HTTP 接口，Bearer Token 认证，注册即赠 100 点免费额度，按量计费。
 
-## 主要页面
+## 页面
 
-- 首页: /
-- 定价: /pricing
-- 接入文档: /docs
-- 在线试用: /playground
-- API 参考（Swagger）: /swagger
-- 申请 API Key: /register
+- [首页](https://didimedia.com/): 产品概览、能力卡片与常见问题
+- [定价](https://didimedia.com/pricing): 全部接口的点数价格表
+- [接入文档](https://didimedia.com/docs): 认证方式、同步/异步调用流程与 curl 示例
+- [在线试用](https://didimedia.com/playground): 浏览器内直接体验全部能力
+- [申请 API Key](https://didimedia.com/register): 注册即得 Key 与 100 点免费额度
+- [API 参考（Swagger）](https://didimedia.com/swagger): OpenAPI 交互式文档
+- [OpenAPI 规范](https://didimedia.com/openapi.json): 机器可读接口定义
 
-## 接入要点
+## 事实速览
 
-- 所有业务接口使用 `Authorization: Bearer <API_KEY>` 请求头认证。
-- 同步接口直接返回处理结果；异步接口提交后返回任务 ID，通过轮询任务状态获取结果。
-- 异步接口字段约定：`t2i`/`i2i`/`video` 用 `prompt`（i2i 另传 `file`），`tts` 用 `text`，`matting`/`enhance`/`asr` 用 `file`。
-- 图片、音频与 AI 处理均以 HTTP 接口提供，可直接接入现有服务。
+- 认证：所有业务接口使用 `Authorization: Bearer <API_KEY>` 请求头。
+- 同步接口：图片剪辑（1 点/次）、音频剪辑（2 点/次），直接返回处理结果。
+- 异步接口：AI 能力提交任务返回 task_id，轮询 `GET /api/v1/tasks/{task_id}`，结果经 `GET /api/v1/result/{task_id}/{filename}` 鉴权下载。
+- 异步能力与价格（点/次）：语音合成 5、人像抠图 10、语音识别 10、文生图 10、对话剪辑 10、画质增强 15、图生图编辑 15、文生视频 20；部分文生图请求由免费生成渠道支持时不扣点。
+- 输出格式：图片 PNG/JPEG/WebP，音频 MP3/WAV，视频 MP4（H.264），语音识别返回转写文本。
+- 文生视频实现：AI 生成画面 + 程序化运镜（推拉 zoom / 平移 pan）合成 MP4；画面为静态图，镜头为程序化运动；不支持真人级动态内容生成、音乐生成、数字人、3D、通用视频剪辑与换脸。
+- 免费额度：注册赠送 100 点；内部渠道调用另有每日配额。
 
-## 主要接口
+## 完整内容
 
-- 图片修图（同步）: `POST /api/v1/image/edit`
-- 人像抠图: `POST /api/v1/ai/matting`
-- 画质增强: `POST /api/v1/ai/enhance`
-- 图生图编辑: `POST /api/v1/ai/i2i`
-- 文生图: `POST /api/v1/ai/t2i`
-- 文本生成运镜视频: `POST /api/v1/ai/video`
-- 对话式剪辑: `POST /api/v1/ai/chat`
-- 语音识别: `POST /api/v1/ai/asr`
-- 语音合成: `POST /api/v1/ai/tts`
-- 音频剪辑（同步）: `POST /api/v1/audio/edit`
-- 任务状态查询: `GET /api/v1/tasks/{task_id}`
-- 结果下载: `GET /api/v1/result/{task_id}/{filename}`
+- [llms-full.txt](https://didimedia.com/llms-full.txt): 面向 AI 的完整站点内容（能力、接口、参数、价格、错误码与常见问题）

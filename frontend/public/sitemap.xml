@@ -4,30 +4,36 @@
     <loc>https://didimedia.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <lastmod>2026-10-02</lastmod>
   </url>
   <url>
     <loc>https://didimedia.com/playground</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+    <lastmod>2026-10-02</lastmod>
   </url>
   <url>
     <loc>https://didimedia.com/pricing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <lastmod>2026-10-02</lastmod>
   </url>
   <url>
     <loc>https://didimedia.com/docs</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <lastmod>2026-10-02</lastmod>
   </url>
   <url>
     <loc>https://didimedia.com/register</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+    <lastmod>2026-10-02</lastmod>
   </url>
   <url>
     <loc>https://didimedia.com/swagger</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
+    <lastmod>2026-10-02</lastmod>
   </url>
 </urlset>

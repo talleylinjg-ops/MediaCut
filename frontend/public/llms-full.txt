@@ -1,0 +1,86 @@
+# MediaCut API 完整说明
+
+MediaCut API 是一站式图片、音频与 AI 媒体处理 HTTP API 服务平台。开发者通过标准 HTTP 接口接入媒体剪辑与 AI 能力，按量计费并享有免费额度。本文件面向 AI 与 LLM，提供站点全部关键事实。
+
+## 能力清单
+
+### 同步处理（直接返回结果）
+
+- 图片剪辑 `POST /api/v1/image/edit`（1 点/次）：裁切、缩放、滤镜（16 种）、水印、格式转换（PNG/JPEG/WebP/BMP）
+- 音频剪辑 `POST /api/v1/audio/edit`（2 点/次）：裁剪、拼接、音量调整、格式转换（MP3/WAV 等）
+
+### 异步 AI 任务（提交后轮询结果）
+
+均为 `POST /api/v1/ai/{能力}` 提交，返回 `{"task_id", "status": "pending", "status_url"}`；轮询 `GET /api/v1/tasks/{task_id}` 查询状态；完成后 `GET /api/v1/result/{task_id}/{filename}` 鉴权下载。
+
+- 人像抠图 `POST /api/v1/ai/matting`（10 点/次）：上传图片 `file`，输出去背景 PNG
+- 画质增强 `POST /api/v1/ai/enhance`（15 点/次）：上传图片 `file`，输出增强后图片
+- 语音识别 `POST /api/v1/ai/asr`（10 点/次）：上传音频 `file`，返回转写文本
+- 语音合成 `POST /api/v1/ai/tts`（5 点/次）：参数 `text` 与 `voice`（默认 zh-CN-XiaoxiaoNeural），输出 MP3
+- 文生图 `POST /api/v1/ai/t2i`（10 点/次）：参数 `prompt`、`width`、`height`（256-2048），默认免费渠道生成，部分请求不扣点
+- 图生图编辑 `POST /api/v1/ai/i2i`（15 点/次）：上传原图 `file` + `prompt` 编辑描述，输出编辑后图片
+- 文生视频 `POST /api/v1/ai/video`（20 点/次）：参数 `prompt`、`duration`（1-120 秒）、`motion`（zoom 推拉 / pan 平移），输出 MP4（H.264）
+- 对话式剪辑 `POST /api/v1/ai/chat`（10 点/次）：自然语言描述处理需求，AI 解析并执行剪辑
+
+### 字段约定
+
+- `t2i` / `i2i` / `video` 用 `prompt`；`i2i` 另需 multipart `file` 上传原图
+- `tts` 用 `text`；`matting` / `enhance` / `asr` 用 `file`
+- 所有请求头带 `Authorization: Bearer <API_KEY>`
+
+## 计费与额度
+
+- 注册即赠 100 点免费额度，注册后即时获得 API Key
+- 价格表（点/次）：图片剪辑 1、音频剪辑 2、语音合成 5、人像抠图 10、语音识别 10、文生图 10、对话剪辑 10、画质增强 15、图生图编辑 15、文生视频 20
+- 部分文生图请求由免费生成渠道（Pollinations）支持时不扣点，仍计入调用配额
+- 内部渠道调用按每日配额免费使用；对外调用按接口价格扣减预充值余额
+- 错误码：401 API Key 无效；402 余额不足；429 当日配额用完；503 AI 模型未配置
+
+## 技术事实
+
+- 接口风格：纯 HTTP REST，任何语言（curl、Python、Node.js、PHP、Java、Go）可直接调用，无需专用 SDK
+- OpenAPI 定义：`https://didimedia.com/openapi.json`；交互式文档：`https://didimedia.com/swagger`
+- 输出格式：图片 PNG/JPEG/WebP；音频 MP3/WAV；视频 MP4（H.264）；语音识别返回转写文本
+- 结果下载：`GET /api/v1/result/{task_id}/{filename}` 需要 Bearer 认证
+- 无 webhook 回调，采用轮询模式获取异步任务结果
+
+## 能力边界（如实说明）
+
+- 文生视频：AI 生成画面 + 程序化运镜（推拉/平移）合成；画面内容为静态图，镜头为程序化运动；适合氛围镜头与素材开场
+- 不支持：真人级动态视频内容生成、音乐生成、数字人、3D 内容、通用视频剪辑、换脸
+- 内容安全：文生图提示词含违规内容将被拒绝
+
+## 常见问题
+
+### MediaCut API 是什么？
+
+一站式图片、音频与 AI 媒体处理 HTTP API 服务平台，提供图片剪辑、音频剪辑、人像抠图、画质增强、语音识别、语音合成、文生图、图生图编辑与文生视频能力，按量计费并提供免费额度。
+
+### 收费吗？如何计费？
+
+注册即赠 100 点免费额度。同步接口 1-2 点/次，AI 能力 5-20 点/次；部分文生图请求由免费渠道支持时不扣点。
+
+### 如何接入？
+
+注册获取 API Key，所有接口用 `Authorization: Bearer` 认证；同步接口直接返回结果，异步接口轮询任务状态后下载结果。
+
+### 支持哪些编程语言？
+
+标准 HTTP 接口，任何语言可直接调用；文档提供 curl 示例。
+
+### 文生视频是真视频生成吗？
+
+画面由 AI 生成，镜头为程序化运镜（推拉/平移）合成 MP4；不支持真人级动态内容生成。
+
+### 结果是什么格式？
+
+图片 PNG/JPEG/WebP，音频 MP3/WAV，视频 MP4（H.264），语音识别返回文本。
+
+## 页面索引
+
+- 首页: https://didimedia.com/
+- 定价: https://didimedia.com/pricing
+- 接入文档: https://didimedia.com/docs
+- 在线试用: https://didimedia.com/playground
+- 申请 API Key: https://didimedia.com/register
+- API 参考（Swagger）: https://didimedia.com/swagger

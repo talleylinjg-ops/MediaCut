@@ -58,6 +58,28 @@
         <el-button type="primary" size="large" @click="$router.push('/register')">立即申请 API Key</el-button>
         <el-button size="large" @click="$router.push('/docs')">查看接入文档</el-button>
       </div>
+
+      <h2 style="font-size: 20px; margin: 40px 0 12px">常见问题</h2>
+      <el-collapse>
+        <el-collapse-item title="MediaCut API 是什么？" name="faq-what">
+          MediaCut API 是一站式图片、音频与 AI 媒体处理 HTTP API 服务平台：提供图片剪辑（裁切/缩放/滤镜/水印/格式转换）、音频剪辑（裁剪/拼接/音量/转换）、人像抠图、画质增强、语音识别、语音合成、文生图、图生图编辑与文生视频（画面+运镜）能力，按量计费并提供免费额度。
+        </el-collapse-item>
+        <el-collapse-item title="收费吗？如何计费？" name="faq-price">
+          注册即赠 100 点免费额度。同步接口按次计费：图片剪辑 1 点/次、音频剪辑 2 点/次；AI 能力 5-20 点/次（语音合成 5 点、人像抠图/语音识别/文生图/对话剪辑 10 点、画质增强/图生图编辑 15 点、文生视频 20 点）。部分文生图请求由免费生成渠道支持时不扣点。
+        </el-collapse-item>
+        <el-collapse-item title="如何接入？需要什么认证方式？" name="faq-integrate">
+          注册后即时获取 API Key，所有业务接口使用 Authorization: Bearer 请求头认证。同步接口直接返回处理结果；异步 AI 接口提交任务后返回 task_id，轮询 GET /api/v1/tasks/{task_id} 获取状态，完成后通过 GET /api/v1/result/{task_id}/{filename} 下载结果。
+        </el-collapse-item>
+        <el-collapse-item title="支持哪些编程语言？" name="faq-language">
+          全部能力以标准 HTTP 接口提供，curl、Python、Node.js、PHP、Java、Go 等任何语言均可直接调用，无需专用 SDK；接入文档页提供可直接复制的 curl 示例。
+        </el-collapse-item>
+        <el-collapse-item title="文生视频是真视频生成吗？" name="faq-video">
+          文生视频的实现方式：先用 AI 生成画面，再通过程序化运镜（推拉 zoom / 平移 pan）合成 MP4 短视频（H.264）。画面内容由 AI 生成，镜头运动为程序化驱动，适合做氛围镜头与素材开场；不支持真人级动态内容生成。
+        </el-collapse-item>
+        <el-collapse-item title="结果是什么格式？" name="faq-format">
+          图片输出 PNG/JPEG/WebP 等常见格式，音频输出 MP3/WAV，视频输出 MP4（H.264）。处理结果通过带鉴权的下载链接获取，任务结果包含图片、音频、视频或文本（如语音识别转写文字）。
+        </el-collapse-item>
+      </el-collapse>
     </div>
   </div>
 </template>
