@@ -4,7 +4,7 @@
  * 目标：边缘对外提供的静态页面与源站完全一致（内容逐字节相同、响应头原样回放）。
  *
  * 分层：
- *   1. 动态路径直接回源：/api/、/static/、/docs、/redoc、/openapi.json、/health
+ *   1. 动态路径直接回源：/api/、/static/、/api-docs、/api-redoc、/openapi.json、/health
  *   2. HTML 页面（/、/ 无扩展名路由、*.html）：
  *        REVALIDATE_HTML=1 时对源站做条件请求（If-None-Match）——
  *          源站 304 → 返回 R2 快照；源站 200 → 更新 R2 快照并返回源站版本；
@@ -26,7 +26,7 @@
  */
 
 const ORIGIN_EXACT = new Set(['/openapi.json', '/health']);
-const ORIGIN_PREFIXES = ['/api/', '/static/', '/docs', '/redoc'];
+const ORIGIN_PREFIXES = ['/api/', '/static/', '/api-docs', '/api-redoc'];
 
 // 逐跳头与 Cloudflare 自行管理的头，不能/无需回放
 const NON_REPLAYABLE = new Set([

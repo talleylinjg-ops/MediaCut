@@ -22,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 FRONTEND_DIST = os.path.normpath(os.path.join(BASE_DIR, "..", "frontend", "dist"))
 
-SPA_EXCLUDED_PREFIXES = ("/api/", "/docs", "/redoc", "/openapi.json", "/static", "/health")
+SPA_EXCLUDED_PREFIXES = ("/api/", "/api-docs", "/api-redoc", "/openapi.json", "/static", "/health")
 
 
 @asynccontextmanager
@@ -80,7 +80,7 @@ async def spa_fallback(request: Request, exc: HTTPException):
     return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
 
-@app.get("/docs", include_in_schema=False)
+@app.get("/api-docs", include_in_schema=False)
 async def custom_docs():
     return get_swagger_ui_html(
         openapi_url="/openapi.json",
@@ -91,7 +91,7 @@ async def custom_docs():
     )
 
 
-@app.get("/redoc", include_in_schema=False)
+@app.get("/api-redoc", include_in_schema=False)
 async def custom_redoc():
     from fastapi.openapi.docs import get_redoc_html
 

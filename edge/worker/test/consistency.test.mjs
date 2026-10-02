@@ -191,6 +191,13 @@ assert.equal(r.headers.get('x-served-from'), 'origin');
 assert.equal(r.headers.get('x-frame-options'), 'DENY', '应保留源站自己的头');
 assert.equal(r.headers.get('x-content-type-options'), null, '不应额外注入');
 
+// I2. Swagger 页面（/api-docs）回源直通，/docs 走 SPA 快照
+r = await call('/api-docs');
+assert.equal(r.headers.get('x-served-from'), 'origin');
+r = await call('/docs', null, { REVALIDATE_HTML: '0' });
+assert.equal(r.headers.get('x-served-from'), 'r2-static');
+assert.equal(await r.text(), origin.indexBody);
+
 // J. 关闭 HTML 校验时直接返回快照
 r = await call('/', null, { REVALIDATE_HTML: '0' });
 assert.equal(r.headers.get('x-served-from'), 'r2-static');
@@ -216,4 +223,4 @@ assert.equal(r.headers.get('x-served-from'), 'r2-static');
 assert.equal(await r.text(), 'didimedia.com');
 
 globalThis.fetch = realFetch;
-console.log('边缘一致性校验全部通过（13 项）');
+console.log('边缘一致性校验全部通过（14 项）');

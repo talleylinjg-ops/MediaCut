@@ -13,5 +13,5 @@
 import { ref } from 'vue'
 import PortalNav from '../components/PortalNav.vue'
 
-const docsUrl = ref('/docs')
+const docsUrl = ref('/api-docs')
 </script>
