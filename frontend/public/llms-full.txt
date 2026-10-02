@@ -76,6 +76,18 @@ MediaCut API 是一站式图片、音频与 AI 媒体处理 HTTP API 服务平�
 
 图片 PNG/JPEG/WebP，音频 MP3/WAV，视频 MP4（H.264），语音识别返回文本。
 
+### 异步任务如何轮询状态？
+
+提交后返回 task_id 与 status_url；轮询 GET /api/v1/tasks/{task_id}，status 依次为 pending、running、succeeded/failed；成功后调用 GET /api/v1/result/{task_id}/{filename} 下载，无需 webhook。
+
+### 常见错误码是什么含义？
+
+401：API Key 无效或缺失；402：余额不足；429：当日配额用完；503：AI 模型未配置。
+
+### 有免费额度或免费能力吗？
+
+注册即赠 100 点免费额度；部分文生图请求由免费生成渠道（Pollinations）支持时不扣点，仍计入调用配额；内部渠道调用另有每日免费配额。
+
 ## 页面索引
 
 - 首页: https://didimedia.com/

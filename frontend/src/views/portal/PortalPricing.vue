@@ -2,7 +2,7 @@
   <div>
     <PortalNav />
     <div style="padding: 40px; max-width: 800px; margin: 0 auto">
-      <h2>定价</h2>
+      <h1 style="font-size: 22px; margin: 0 0 12px">MediaCut API 定价</h1>
       <p>所有对外接口按次计费，从预充值余额中扣减。余额不足时接口返回 402。</p>
       <el-table :data="plans" style="margin-top: 24px">
         <el-table-column prop="endpoint" label="接口" width="220" />

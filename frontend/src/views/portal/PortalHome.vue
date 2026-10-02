@@ -79,6 +79,15 @@
         <el-collapse-item title="结果是什么格式？" name="faq-format">
           图片输出 PNG/JPEG/WebP 等常见格式，音频输出 MP3/WAV，视频输出 MP4（H.264）。处理结果通过带鉴权的下载链接获取，任务结果包含图片、音频、视频或文本（如语音识别转写文字）。
         </el-collapse-item>
+        <el-collapse-item title="异步任务如何轮询状态？" name="faq-poll">
+          提交异步 AI 任务后接口返回 task_id 与 status_url。轮询 GET /api/v1/tasks/{task_id}，status 依次为 pending（排队）、running（处理中）、succeeded（成功）或 failed（失败）；成功后调用 GET /api/v1/result/{task_id}/{filename} 下载结果，无需配置 webhook 回调。
+        </el-collapse-item>
+        <el-collapse-item title="常见错误码是什么含义？" name="faq-errors">
+          401：API Key 无效或缺失；402：余额不足，请充值；429：当日配额已用完；503：AI 模型未配置。认证类错误请检查 Authorization: Bearer 请求头是否携带有效 Key。
+        </el-collapse-item>
+        <el-collapse-item title="有免费额度或免费能力吗？" name="faq-free">
+          注册即赠 100 点免费额度，无需绑定支付方式。部分文生图请求由免费生成渠道（Pollinations）支持时不扣点，仍计入调用配额；内部渠道调用另有每日免费配额。
+        </el-collapse-item>
       </el-collapse>
     </div>
   </div>

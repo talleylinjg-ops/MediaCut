@@ -3,7 +3,7 @@
     <PortalNav />
     <div style="padding: 40px; max-width: 560px; margin: 0 auto">
       <el-card>
-        <h2>申请 API Key</h2>
+        <h1 style="font-size: 20px; margin: 0 0 12px">申请 MediaCut API Key</h1>
         <el-alert v-if="meKey" type="info" :closable="false" show-icon style="margin-bottom: 16px">
           <p>您已登录并申请过 API Key：<code>{{ meKey }}</code></p>
           <div style="margin-top: 8px">

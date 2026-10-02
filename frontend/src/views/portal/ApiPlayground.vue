@@ -2,7 +2,7 @@
   <div>
     <PortalNav />
     <div style="padding: 24px 40px; max-width: 1000px; margin: 0 auto">
-      <h2>在线试用</h2>
+      <h1 style="font-size: 22px; margin: 0 0 12px">在线试用 MediaCut API</h1>
       <el-alert
         type="info"
         :closable="false"

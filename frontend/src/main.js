@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
+import { getPriceTable } from './api/billing'
 
 const Login = () => import('./views/Login.vue')
 const AdminHome = () => import('./views/AdminHome.vue')
@@ -125,7 +126,74 @@ router.afterEach((to) => {
   setMetaTag('description', to.meta.description || DEFAULT_DESC)
   setMetaTag('robots', to.meta.noindex ? 'noindex,nofollow' : 'index,follow,max-image-preview:large')
   setCanonical(to.path)
+  setRouteJsonLd(routeJsonLd(to.path))
 })
+
+const ROUTE_JSONLD_ID = 'route-jsonld'
+
+function setRouteJsonLd(data) {
+  let el = document.getElementById(ROUTE_JSONLD_ID)
+  if (!data) {
+    if (el) el.remove()
+    return
+  }
+  if (!el) {
+    el = document.createElement('script')
+    el.id = ROUTE_JSONLD_ID
+    el.type = 'application/ld+json'
+    document.head.appendChild(el)
+  }
+  el.textContent = JSON.stringify(data)
+}
+
+function routeJsonLd(path) {
+  if (path === '/pricing') {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'OfferCatalog',
+      name: 'MediaCut API 接口价格表',
+      itemListElement: getPriceTable().map((item) => ({
+        '@type': 'Offer',
+        price: String(item.price),
+        priceCurrency: 'CNY',
+        itemOffered: {
+          '@type': 'Service',
+          name: item.name,
+          serviceType: item.endpoint
+        }
+      }))
+    }
+  }
+  if (path === '/docs') {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name: '如何接入 MediaCut API',
+      totalTime: 'P0DT5M',
+      step: [
+        {
+          '@type': 'HowToStep',
+          position: 1,
+          name: '注册获取 API Key',
+          text: '在注册页免费注册，立即获得 API Key 与 100 点免费额度，无需绑定支付方式。'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 2,
+          name: '携带认证调用接口',
+          text: '所有业务接口使用 Authorization: Bearer <API_KEY> 请求头。同步接口（图片剪辑 1 点/次、音频剪辑 2 点/次）直接返回处理结果；AI 异步接口提交任务后返回 task_id。'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 3,
+          name: '轮询状态并下载结果',
+          text: '轮询 GET /api/v1/tasks/{task_id}，status 变为 succeeded 后通过 GET /api/v1/result/{task_id}/{filename} 下载结果。'
+        }
+      ]
+    }
+  }
+  return null
+}
 
 const SITE_ORIGIN = 'https://didimedia.com'
 

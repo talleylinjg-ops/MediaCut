@@ -2,7 +2,7 @@
   <div>
     <PortalNav />
     <div style="padding: 40px; max-width: 900px; margin: 0 auto">
-      <h2>接入文档</h2>
+      <h1 style="font-size: 22px; margin: 0 0 12px">MediaCut API 接入文档</h1>
 
       <h3>1. 认证</h3>
       <p>所有业务接口使用 <code>Authorization: Bearer &lt;API_KEY&gt;</code> 请求头认证。</p>
