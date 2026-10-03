@@ -6,6 +6,7 @@
 #   export CLOUDFLARE_ACCOUNT_ID=...
 #   bash edge/deploy-edge.sh            # 用现有 frontend/dist
 #   bash edge/deploy-edge.sh --build    # 先重新构建前端再上传
+#   bash edge/deploy-edge.sh --build --static   # 构建纯静态展示版（隐藏注册/试用/控制台等后端入口）并上传
 #
 # 只上传、不部署 Worker：bash edge/deploy-edge.sh --skip-deploy
 # 只部署、不上传：       bash edge/deploy-edge.sh --skip-upload
@@ -19,9 +20,11 @@ DIST_DIR="$ROOT_DIR/frontend/dist"
 BUILD=0
 SKIP_UPLOAD=0
 SKIP_DEPLOY=0
+STATIC_BUILD=0
 for arg in "$@"; do
   case "$arg" in
     --build) BUILD=1 ;;
+    --static) STATIC_BUILD=1 ;;
     --skip-upload) SKIP_UPLOAD=1 ;;
     --skip-deploy) SKIP_DEPLOY=1 ;;
     *) echo "未知参数: $arg" >&2; exit 2 ;;
@@ -38,8 +41,13 @@ if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
 fi
 
 if [[ "$BUILD" == "1" ]]; then
-  echo "==> 构建前端"
-  (cd "$ROOT_DIR/frontend" && npm run build)
+  if [[ "$STATIC_BUILD" == "1" ]]; then
+    echo "==> 构建前端（纯静态展示版，无后端功能入口）"
+    (cd "$ROOT_DIR/frontend" && npm run build:static)
+  else
+    echo "==> 构建前端"
+    (cd "$ROOT_DIR/frontend" && npm run build)
+  fi
 fi
 
 if [[ ! -f "$DIST_DIR/index.html" ]]; then

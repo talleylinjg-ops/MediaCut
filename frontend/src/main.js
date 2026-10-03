@@ -2,22 +2,15 @@ import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import { getPriceTable } from './api/billing'
+import { STATIC_ONLY } from './staticMode'
 
-const Login = () => import('./views/Login.vue')
-const AdminHome = () => import('./views/AdminHome.vue')
-const AdminProfile = () => import('./views/AdminProfile.vue')
-const Developers = () => import('./views/Developers.vue')
-const Stats = () => import('./views/Stats.vue')
 const PortalHome = () => import('./views/portal/PortalHome.vue')
 const PortalPricing = () => import('./views/portal/PortalPricing.vue')
 const PortalRegister = () => import('./views/portal/PortalRegister.vue')
 const PortalDocs = () => import('./views/portal/PortalDocs.vue')
-const ClientLogin = () => import('./views/portal/ClientLogin.vue')
-const ClientConsole = () => import('./views/portal/ClientConsole.vue')
-const ApiPlayground = () => import('./views/portal/ApiPlayground.vue')
-const SwaggerDoc = () => import('./views/SwaggerDoc.vue')
+const StaticContact = () => import('./views/portal/StaticContact.vue')
 
-const routes = [
+const portalRoutes = [
   {
     path: '/',
     component: PortalHome,
@@ -35,6 +28,18 @@ const routes = [
     }
   },
   {
+    path: '/docs',
+    component: PortalDocs,
+    meta: {
+      title: '接入文档',
+      description: 'MediaCut API 接入文档：认证方式、请求示例、异步任务流程与接口说明。'
+    }
+  }
+]
+
+const fullRoutes = [
+  ...portalRoutes,
+  {
     path: '/register',
     component: PortalRegister,
     meta: {
@@ -43,21 +48,13 @@ const routes = [
     }
   },
   {
-    path: '/docs',
-    component: PortalDocs,
-    meta: {
-      title: '接入文档',
-      description: 'MediaCut API 接入文档：认证方式、请求示例、异步任务流程与接口说明。'
-    }
-  },
-  {
     path: '/swagger',
-    component: SwaggerDoc,
+    component: () => import('./views/SwaggerDoc.vue'),
     meta: { title: 'API 参考', description: 'MediaCut API 完整接口参考文档（Swagger / OpenAPI）。' }
   },
   {
     path: '/playground',
-    component: ApiPlayground,
+    component: () => import('./views/portal/ApiPlayground.vue'),
     meta: {
       title: '在线试用',
       description: '在线试用 MediaCut API：体验图片剪辑、音频处理、AI 处理以及文生图、图生图编辑、文生视频等生成式能力。'
@@ -65,22 +62,37 @@ const routes = [
   },
   {
     path: '/client/try',
-    component: ApiPlayground,
+    component: () => import('./views/portal/ApiPlayground.vue'),
     meta: { title: '在线试用', description: '在线试用 MediaCut API：体验图片剪辑、音频处理与 AI 能力。' }
   },
-  { path: '/client/login', component: ClientLogin, meta: { title: '客户登录', noindex: true } },
+  { path: '/client/login', component: () => import('./views/portal/ClientLogin.vue'), meta: { title: '客户登录', noindex: true } },
   {
     path: '/client/console',
-    component: ClientConsole,
+    component: () => import('./views/portal/ClientConsole.vue'),
     meta: { requiresClient: true, title: '控制台', noindex: true }
   },
-  { path: '/login', component: Login, meta: { title: '管理员登录', noindex: true } },
-  { path: '/admin', component: AdminHome, meta: { requiresAuth: true, title: '管理后台', noindex: true } },
-  { path: '/account', component: AdminProfile, meta: { requiresAuth: true, title: '账号中心', noindex: true } },
-  { path: '/developers', component: Developers, meta: { requiresAuth: true, title: '开发者管理', noindex: true } },
-  { path: '/stats', component: Stats, meta: { requiresAuth: true, title: '调用统计', noindex: true } },
+  { path: '/login', component: () => import('./views/Login.vue'), meta: { title: '管理员登录', noindex: true } },
+  { path: '/admin', component: () => import('./views/AdminHome.vue'), meta: { requiresAuth: true, title: '管理后台', noindex: true } },
+  { path: '/account', component: () => import('./views/AdminProfile.vue'), meta: { requiresAuth: true, title: '账号中心', noindex: true } },
+  { path: '/developers', component: () => import('./views/Developers.vue'), meta: { requiresAuth: true, title: '开发者管理', noindex: true } },
+  { path: '/stats', component: () => import('./views/Stats.vue'), meta: { requiresAuth: true, title: '调用统计', noindex: true } },
   { path: '/api-keys', redirect: '/register' }
 ]
+
+const staticRoutes = [
+  ...portalRoutes,
+  {
+    path: '/register',
+    component: StaticContact,
+    meta: {
+      title: '申请 API Key',
+      description: '申请 MediaCut API Key：发送邮件说明使用场景，人工开通账号与 API Key，含 100 点免费额度。'
+    }
+  },
+  { path: '/:pathMatch(.*)*', redirect: '/' }
+]
+
+const routes = STATIC_ONLY ? staticRoutes : fullRoutes
 
 const router = createRouter({
   history: createWebHistory(),

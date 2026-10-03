@@ -12,7 +12,7 @@
             <h3>图片剪辑</h3>
             <p>裁切、缩放、滤镜、水印、格式转换</p>
             <p><el-tag type="success">1 点 / 次</el-tag></p>
-            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=image')">去试用</el-button>
+            <el-button v-if="!STATIC_ONLY" size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=image')">去试用</el-button>
           </el-card>
         </el-col>
         <el-col :span="8">
@@ -20,7 +20,7 @@
             <h3>音频剪辑</h3>
             <p>裁剪、拼接、音量调整、格式转换</p>
             <p><el-tag type="warning">2 点 / 次</el-tag></p>
-            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=audio')">去试用</el-button>
+            <el-button v-if="!STATIC_ONLY" size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=audio')">去试用</el-button>
           </el-card>
         </el-col>
         <el-col :span="8">
@@ -28,7 +28,7 @@
             <h3>AI 处理</h3>
             <p>人像抠图、画质增强、语音识别、语音合成</p>
             <p><el-tag type="danger">5-15 点 / 次</el-tag></p>
-            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=ai')">去试用</el-button>
+            <el-button v-if="!STATIC_ONLY" size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=ai')">去试用</el-button>
           </el-card>
         </el-col>
       </el-row>
@@ -38,7 +38,7 @@
             <h3>AI 创作与工具</h3>
             <p>文生图、图生图编辑、文生视频、语音合成、人像抠图、画质增强、语音识别</p>
             <p><el-tag type="danger">10-20 点 / 次</el-tag></p>
-            <el-button size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=create')">去创作</el-button>
+            <el-button v-if="!STATIC_ONLY" size="small" type="primary" plain style="margin-top: 8px" @click="$router.push('/playground?tab=create')">去创作</el-button>
           </el-card>
         </el-col>
         <el-col :span="8">
@@ -55,7 +55,8 @@
         </el-col>
       </el-row>
       <div style="margin-top: 32px">
-        <el-button type="primary" size="large" @click="$router.push('/register')">立即申请 API Key</el-button>
+        <el-button v-if="!STATIC_ONLY" type="primary" size="large" @click="$router.push('/register')">立即申请 API Key</el-button>
+        <el-button v-else type="primary" size="large" tag="a" href="mailto:saas@didimedia.com?subject=MediaCut%20API%20Key%20%E7%94%B3%E8%AF%B7">邮件申请 API Key</el-button>
         <el-button size="large" @click="$router.push('/docs')">查看接入文档</el-button>
       </div>
 
@@ -95,4 +96,5 @@
 
 <script setup>
 import PortalNav from '../../components/PortalNav.vue'
+import { STATIC_ONLY } from '../../staticMode'
 </script>
