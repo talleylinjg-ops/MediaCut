@@ -61,3 +61,14 @@ Entries discovered by the Agent during task execution should follow this format:
   - didi AI（WordPress 主题）已由用户在其侧接入 MediaCut API 并确认可用；工作区内 `didiAI/` 只是适配层副本，无需再做 functions.php 接入
   - 边缘「完全一致」校验：`bash edge/verify-consistency.sh --origin <源站> [--edge <边缘>]`，对比 dist 全部文件与 SPA 路由的状态码/content-type/字节；deploy-edge.sh 的 MIME 映射已对齐源站 uvicorn（xml 无 charset、ico 为 image/vnd.microsoft.icon），改 MIME 需同步 edge/worker/src/index.js 的 MIME 表
   - 路由归属：`/docs` = 前端接入文档页（PortalDocs），`/api-docs`、`/api-redoc` = 后端 Swagger/Redoc，`/docs` 在边缘 Worker 走 SPA 快照而非回源
+
+[Project Knowledge Summary]
+- Date: 2026-10-03
+- Context: Discovered by Agent while deploying the edge layer to Cloudflare
+- Category: Operations & Deployment
+- Instructions:
+  - CF 边缘站已上线（纯静态版）：https://mediacut-edge.talley-linjg.workers.dev（Worker name: mediacut-edge，Account: Daqi Account 2e33f078...，R2 桶: didimedia-mediacut-static）
+  - CF Token 由用户在会话中提供并通过环境变量传入，严禁写入任何文件或 git
+  - 沙箱出口 DNS 对 workers.dev 有污染（解析到错误 IP），验证需用 DoH 拿真实 IP 后 curl --resolve；真实浏览器访问正常
+  - 完整版切换：源站就绪后执行 `CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... bash edge/deploy-edge.sh --build`（重传完整 dist 并部署）
+  - 静态版重传：`bash edge/deploy-edge.sh --build --static`

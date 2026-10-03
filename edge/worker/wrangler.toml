@@ -22,8 +22,8 @@ MIRROR_WRITE = "1"
 # "0" 表示纯边缘快照：HTML 直接返回 R2 快照，不向源站做条件校验
 REVALIDATE_HTML = "0"
 
-# 静态资源桶（先执行 `npx wrangler r2 bucket create mediacut-static`）
+# 静态资源桶（先执行 `npx wrangler r2 bucket create didimedia-mediacut-static`）
 [[r2_buckets]]
 binding = "STATIC"
-bucket_name = "mediacut-static"
-preview_bucket_name = "mediacut-static"
+bucket_name = "didimedia-mediacut-static"
+preview_bucket_name = "didimedia-mediacut-static"
