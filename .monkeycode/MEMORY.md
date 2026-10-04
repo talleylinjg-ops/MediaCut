@@ -68,7 +68,10 @@ Entries discovered by the Agent during task execution should follow this format:
 - Category: Operations & Deployment
 - Instructions:
   - CF 边缘站已上线（纯静态版）：https://mediacut-edge.talley-linjg.workers.dev（Worker name: mediacut-edge，Account: Daqi Account 2e33f078...，R2 桶: didimedia-mediacut-static）
+  - 双站形态：本地 8000 原站 = 完整版（保留全部功能）；CF = 纯静态展示版（build:static），两版 SEO 头部 21 行逐字一致，可见差异仅 STATIC_ONLY 条件化的按钮/菜单
+  - R2 照常上传 _headers/_redirects（无扩展名文件 MIME octet-stream 与源站一致），静态版 dist vs CF 边缘 69 项校验全过
   - CF Token 由用户在会话中提供并通过环境变量传入，严禁写入任何文件或 git
   - 沙箱出口 DNS 对 workers.dev 有污染（解析到错误 IP），验证需用 DoH 拿真实 IP 后 curl --resolve；真实浏览器访问正常
   - 完整版切换：源站就绪后执行 `CLOUDFLARE_API_TOKEN=... CLOUDFLARE_ACCOUNT_ID=... bash edge/deploy-edge.sh --build`（重传完整 dist 并部署）
   - 静态版重传：`bash edge/deploy-edge.sh --build --static`
+  - 边缘一致性校验：静态版用 `bash edge/verify-consistency.sh --edge <边缘> --resolve "host:443:<DoH IP>"`；完整版双轨用 `--origin <源站> --edge <边缘>`
