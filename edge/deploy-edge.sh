@@ -90,9 +90,6 @@ if [[ "$SKIP_UPLOAD" != "1" ]]; then
   count=0
   while IFS= read -r -d '' file; do
     rel="${file#"$DIST_DIR"/}"
-    case "$rel" in
-      _headers|_redirects) continue ;;
-    esac
     ct="$(content_type_for "$rel")"
     npx --yes wrangler r2 object put "$BUCKET/$rel" \
       --file "$file" --content-type "$ct" --remote --force >/dev/null
