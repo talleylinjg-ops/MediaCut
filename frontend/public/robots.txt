@@ -76,7 +76,7 @@ Disallow: /admin
 Disallow: /client/console
 Disallow: /api/
 
-Sitemap: https://didimedia.com/sitemap.xml
+Sitemap: https://mediacut.chacha.asia/sitemap.xml
 
-# 面向 AI 与 LLM 的站点说明: https://didimedia.com/llms.txt
-# 面向 AI 与 LLM 的完整站点内容: https://didimedia.com/llms-full.txt
+# 面向 AI 与 LLM 的站点说明: https://mediacut.chacha.asia/llms.txt
+# 面向 AI 与 LLM 的完整站点内容: https://mediacut.chacha.asia/llms-full.txt

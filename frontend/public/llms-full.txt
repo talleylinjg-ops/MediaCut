@@ -39,7 +39,8 @@ MediaCut API 是一站式图片、音频与 AI 媒体处理 HTTP API 服务平�
 ## 技术事实
 
 - 接口风格：纯 HTTP REST，任何语言（curl、Python、Node.js、PHP、Java、Go）可直接调用，无需专用 SDK
-- OpenAPI 定义：`https://didimedia.com/openapi.json`；交互式文档：`https://didimedia.com/swagger`
+- 接入文档页 `https://mediacut.chacha.asia/docs` 包含认证、提交、轮询、下载与错误码的完整说明及 curl 示例
+- OpenAPI 交互式文档（Swagger 与 openapi.json）由 API 服务在正式部署环境提供（路径 /api-docs 与 /openapi.json）
 - 输出格式：图片 PNG/JPEG/WebP；音频 MP3/WAV；视频 MP4（H.264）；语音识别返回转写文本
 - 结果下载：`GET /api/v1/result/{task_id}/{filename}` 需要 Bearer 认证
 - 无 webhook 回调，采用轮询模式获取异步任务结果
@@ -90,9 +91,9 @@ MediaCut API 是一站式图片、音频与 AI 媒体处理 HTTP API 服务平�
 
 ## 页面索引
 
-- 首页: https://didimedia.com/
-- 定价: https://didimedia.com/pricing
-- 接入文档: https://didimedia.com/docs
-- 在线试用: https://didimedia.com/playground
-- 申请 API Key: https://didimedia.com/register
-- API 参考（Swagger）: https://didimedia.com/swagger
+- 首页: https://mediacut.chacha.asia/
+- 定价: https://mediacut.chacha.asia/pricing
+- 接入文档: https://mediacut.chacha.asia/docs
+- 申请 API Key: https://mediacut.chacha.asia/register
+
+说明：在线试用（playground）、客户控制台与 API 参考（Swagger/OpenAPI）随完整版部署提供。

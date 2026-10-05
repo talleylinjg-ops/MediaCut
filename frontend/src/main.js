@@ -207,7 +207,7 @@ function routeJsonLd(path) {
   return null
 }
 
-const SITE_ORIGIN = 'https://didimedia.com'
+const SITE_ORIGIN = 'https://mediacut.chacha.asia'
 
 function setCanonical(path) {
   let link = document.head.querySelector('link[rel="canonical"]')

@@ -4,13 +4,12 @@
 
 ## 页面
 
-- [首页](https://didimedia.com/): 产品概览、能力卡片与常见问题
-- [定价](https://didimedia.com/pricing): 全部接口的点数价格表
-- [接入文档](https://didimedia.com/docs): 认证方式、同步/异步调用流程与 curl 示例
-- [在线试用](https://didimedia.com/playground): 浏览器内直接体验全部能力
-- [申请 API Key](https://didimedia.com/register): 注册即得 Key 与 100 点免费额度
-- [API 参考（Swagger）](https://didimedia.com/swagger): OpenAPI 交互式文档
-- [OpenAPI 规范](https://didimedia.com/openapi.json): 机器可读接口定义
+- [首页](https://mediacut.chacha.asia/): 产品概览、能力卡片与常见问题
+- [定价](https://mediacut.chacha.asia/pricing): 全部接口的点数价格表
+- [接入文档](https://mediacut.chacha.asia/docs): 认证方式、同步/异步调用流程与 curl 示例
+- [申请 API Key](https://mediacut.chacha.asia/register): 注册即得 Key 与 100 点免费额度
+
+说明：在线试用（playground）、客户控制台与 API 参考（Swagger/OpenAPI）随完整版部署提供；当前接入文档页已包含调用所需的全部信息。
 
 ## 事实速览
 
@@ -24,4 +23,4 @@
 
 ## 完整内容
 
-- [llms-full.txt](https://didimedia.com/llms-full.txt): 面向 AI 的完整站点内容（能力、接口、参数、价格、错误码与常见问题）
+- [llms-full.txt](https://mediacut.chacha.asia/llms-full.txt): 面向 AI 的完整站点内容（能力、接口、参数、价格、错误码与常见问题）
