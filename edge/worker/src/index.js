@@ -136,6 +136,11 @@ function buildHeaders(stored, key) {
   if (key.endsWith('.html') && !headers.has('cache-control')) {
     headers.set('cache-control', 'no-cache, must-revalidate');
   }
+  // 带内容哈希的构建产物可长期缓存（与 public/_headers 规则保持一致）
+  if (key.startsWith('assets/') && !headers.has('cache-control')) {
+    headers.set('cache-control', 'public, max-age=31536000, immutable');
+  }
+  if (!headers.has('vary')) headers.set('vary', 'Accept-Encoding');
   return headers;
 }
 
@@ -192,6 +197,17 @@ async function proxyToOrigin(request, env, marker) {
   return out;
 }
 
+/** 安全响应头：缺失时补齐（与 public/_headers 保持一致），不覆盖已有值。
+ *  仅作用于 R2 快照/自有响应；镜像回放保持源站原样，保证边缘与源站逐字一致。 */
+function harden(resp) {
+  const h = resp.headers;
+  if (!h.has('x-content-type-options')) h.set('x-content-type-options', 'nosniff');
+  if (!h.has('x-frame-options')) h.set('x-frame-options', 'SAMEORIGIN');
+  if (!h.has('referrer-policy')) h.set('referrer-policy', 'strict-origin-when-cross-origin');
+  if (!h.has('permissions-policy')) h.set('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  return resp;
+}
+
 /** @param {any} object R2 对象 */
 function serveSnapshot(request, object, key, marker) {
   const headers = buildHeaders(storedHeadersOf(object), key);
@@ -205,7 +221,7 @@ function serveSnapshot(request, object, key, marker) {
   const body = request.method === 'HEAD' ? null : object.body;
   const resp = new Response(body, { status, headers });
   resp.headers.set('x-served-from', marker);
-  return resp;
+  return harden(resp);
 }
 
 /**
@@ -218,6 +234,9 @@ function serveSnapshot(request, object, key, marker) {
  * @param {string} path
  */
 async function serveHtml(request, env, ctx, key, path) {
+  const compressed = await serveCompressed(request, env, key);
+  if (compressed) return compressed;
+
   const snapshot = await env.STATIC.get(key);
   const stored = storedHeadersOf(snapshot);
 
@@ -274,7 +293,45 @@ async function serveHtml(request, env, ctx, key, path) {
  * @param {string} key
  * @param {string} path
  */
+/** @param {Request} request */
+function acceptsEncoding(request) {
+  const ae = request.headers.get('accept-encoding') || '';
+  return { br: /\bbr\b/i.test(ae), gzip: /\bgzip\b/i.test(ae) };
+}
+
+/**
+ * 预压缩对象协商：按客户端能力尝试 key.br / key.gz（deploy-edge.sh 上传）。
+ * 命中返回带 Content-Encoding 的响应；未命中返回 null（走原对象）。
+ * 压缩路径绕过 caches.default，避免按 URL 缓存时混淆不同编码的响应。
+ */
+async function serveCompressed(request, env, key) {
+  if (request.method !== 'GET' || request.headers.has('range')) return null;
+  const enc = acceptsEncoding(request);
+  if (!enc.br && !enc.gzip) return null;
+  const candidates = enc.br
+    ? [
+        [`${key}.br`, 'br'],
+        [`${key}.gz`, 'gzip']
+      ]
+    : [[`${key}.gz`, 'gzip']];
+  for (const [candidateKey, encoding] of candidates) {
+    const obj = await env.STATIC.get(candidateKey);
+    if (!obj) continue;
+    const headers = buildHeaders(storedHeadersOf(obj), key);
+    headers.set('content-type', mimeFor(key));
+    headers.set('content-encoding', encoding);
+    headers.set('content-length', String(obj.size));
+    const resp = new Response(obj.body, { status: 200, headers });
+    resp.headers.set('x-served-from', 'r2-static');
+    return harden(resp);
+  }
+  return null;
+}
+
 async function serveAsset(request, env, ctx, key, path) {
+  const compressed = await serveCompressed(request, env, key);
+  if (compressed) return compressed;
+
   const wantsRange = request.headers.has('range');
 
   if (request.method === 'GET' && !wantsRange) {
@@ -403,7 +460,7 @@ async function serveFile(url, env, path) {
   headers.set('Content-Length', String(obj.size));
   headers.set('Cache-Control', 'private, max-age=300');
   headers.set('x-served-from', 'r2-results');
-  return new Response(obj.body, { headers });
+  return harden(new Response(obj.body, { headers }));
 }
 
 export default {

@@ -2,6 +2,10 @@
 
 MediaCut API 是一站式图片、音频与 AI 媒体处理 HTTP API 服务平台。开发者通过标准 HTTP 接口接入媒体剪辑与 AI 能力，按量计费并享有免费额度。本文件面向 AI 与 LLM，提供站点全部关键事实。
 
+## English Summary
+
+MediaCut API is a one-stop HTTP API platform for image, audio, and AI media processing. Developers integrate media editing and AI capabilities through plain HTTP interfaces with Bearer token authentication, pay per use, and receive free credits on signup. This file targets AI and LLM consumers and contains all key facts about the site: capabilities, endpoints, parameters, pricing, error codes, and FAQs.
+
 ## 能力清单
 
 ### 同步处理（直接返回结果）
@@ -40,6 +44,7 @@ MediaCut API 是一站式图片、音频与 AI 媒体处理 HTTP API 服务平�
 
 - 接口风格：纯 HTTP REST，任何语言（curl、Python、Node.js、PHP、Java、Go）可直接调用，无需专用 SDK
 - 接入文档页 `https://mediacut.chacha.asia/docs` 包含认证、提交、轮询、下载与错误码的完整说明及 curl 示例
+- 快速上手教程页 `https://mediacut.chacha.asia/guide/quickstart` 提供五分钟跑通第一个请求的分步教程（获取 Key → 同步调用 → 提交异步任务 → 轮询 → 下载结果）
 - OpenAPI 交互式文档（Swagger 与 openapi.json）由 API 服务在正式部署环境提供（路径 /api-docs 与 /openapi.json）
 - 输出格式：图片 PNG/JPEG/WebP；音频 MP3/WAV；视频 MP4（H.264）；语音识别返回转写文本
 - 结果下载：`GET /api/v1/result/{task_id}/{filename}` 需要 Bearer 认证
@@ -93,6 +98,7 @@ MediaCut API 是一站式图片、音频与 AI 媒体处理 HTTP API 服务平�
 
 - 首页: https://mediacut.chacha.asia/
 - 定价: https://mediacut.chacha.asia/pricing
+- 快速上手: https://mediacut.chacha.asia/guide/quickstart
 - 接入文档: https://mediacut.chacha.asia/docs
 - 申请 API Key: https://mediacut.chacha.asia/register
 

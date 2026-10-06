@@ -2,10 +2,15 @@
 
 > 面向开发者的媒体处理 API 服务平台。提供图片剪辑（裁切/缩放/滤镜/水印/格式转换）、音频剪辑（裁剪/拼接/音量调整/格式转换）与 AI 能力（人像抠图、画质增强、语音识别、语音合成、文生图、图生图编辑、文生视频画面+运镜、对话式剪辑）。标准 HTTP 接口，Bearer Token 认证，注册即赠 100 点免费额度，按量计费。
 
+## English Summary
+
+MediaCut API is a media-processing API platform for developers. It provides image editing (crop, resize, filters, watermark, format conversion), audio editing (trim, concatenate, volume, format conversion), and AI capabilities (portrait matting, image enhancement, speech recognition, TTS, text-to-image, image editing, text-to-video with programmatic camera moves, conversational editing). Plain HTTP APIs with Bearer token authentication. New accounts receive 100 free credits and pay per use. Pricing ranges from 1 to 20 credits per call.
+
 ## 页面
 
-- [首页](https://mediacut.chacha.asia/): 产品概览、能力卡片与常见问题
+- [首页](https://mediacut.chacha.asia/): 产品概览、能力卡片、适用场景与常见问题
 - [定价](https://mediacut.chacha.asia/pricing): 全部接口的点数价格表
+- [快速上手](https://mediacut.chacha.asia/guide/quickstart): 五分钟跑通第一个请求的教程，含 curl 示例
 - [接入文档](https://mediacut.chacha.asia/docs): 认证方式、同步/异步调用流程与 curl 示例
 - [申请 API Key](https://mediacut.chacha.asia/register): 注册即得 Key 与 100 点免费额度
 

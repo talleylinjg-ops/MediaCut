@@ -60,6 +60,26 @@
         <el-button size="large" @click="$router.push('/docs')">查看接入文档</el-button>
       </div>
 
+      <h2 style="font-size: 20px; margin: 40px 0 12px">为什么选择 MediaCut API</h2>
+      <ul style="line-height: 1.9; padding-left: 20px; margin: 0">
+        <li><strong>开箱即用</strong>：无需部署 GPU 服务器或安装模型依赖，一个 HTTP 请求即可完成图片裁切、人像抠图、语音识别等处理。</li>
+        <li><strong>价格透明</strong>：按量计费 1-20 点/次，注册即赠 100 点，无最低消费、无预付套餐、无需绑定支付方式。</li>
+        <li><strong>语言无关</strong>：标准 HTTP 接口 + Bearer Token 认证，curl、Python、Node.js、PHP、Java、Go 等任何语言可直接调用，无需专用 SDK。</li>
+        <li><strong>全能力栈</strong>：从基础剪辑（裁切/缩放/水印/格式转换）到 AI 能力（人像抠图/画质增强/语音识别/语音合成/文生图/文生视频）一个平台全部覆盖。</li>
+        <li><strong>异步任务模型</strong>：AI 任务提交后返回 task_id，轮询状态即可获取结果，无需自建 webhook 基础设施。</li>
+        <li><strong>结果托管</strong>：处理结果存放在云端，下载时提供带签名的临时链接，无需自建对象存储与鉴权逻辑。</li>
+      </ul>
+
+      <h2 style="font-size: 20px; margin: 40px 0 12px">适用场景</h2>
+      <ul style="line-height: 1.9; padding-left: 20px; margin: 0">
+        <li><strong>App 与小程序</strong>：用户上传图片后一键裁切、缩放、压缩、加水印，1 点/次即可完成。</li>
+        <li><strong>电商与零售</strong>：商品图批量格式转换、人像抠图换背景、画质增强提升商品展示效果。</li>
+        <li><strong>内容创作</strong>：文生图生成配图、文生视频生成开场镜头（画面 + 运镜）、图生图编辑修改素材。</li>
+        <li><strong>音频与播客</strong>：音频裁剪拼接、语音识别转写文字、语音合成生成配音。</li>
+        <li><strong>自动化工作流</strong>：对话式剪辑用自然语言指令驱动媒体处理，适合集成到客服与运营系统。</li>
+        <li><strong>企业内部系统</strong>：截图处理、水印标注、素材格式归一化，统一接入一个 API。</li>
+      </ul>
+
       <h2 style="font-size: 20px; margin: 40px 0 12px">常见问题</h2>
       <el-collapse>
         <el-collapse-item title="MediaCut API 是什么？" name="faq-what">

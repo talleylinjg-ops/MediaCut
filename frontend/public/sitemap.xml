@@ -1,28 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- 过渡期静态站点仅包含以下 4 个页面；正式域名接入并启用完整版后，恢复 playground/swagger 条目 -->
+<!-- 过渡期静态站点仅包含以下 5 个页面；正式域名接入并启用完整版后，恢复 playground/swagger 条目 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://mediacut.chacha.asia/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-06</lastmod>
   </url>
   <url>
     <loc>https://mediacut.chacha.asia/pricing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-06</lastmod>
+  </url>
+  <url>
+    <loc>https://mediacut.chacha.asia/guide/quickstart</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <lastmod>2026-10-06</lastmod>
   </url>
   <url>
     <loc>https://mediacut.chacha.asia/docs</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-06</lastmod>
   </url>
   <url>
     <loc>https://mediacut.chacha.asia/register</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
-    <lastmod>2026-10-05</lastmod>
+    <lastmod>2026-10-06</lastmod>
   </url>
 </urlset>

@@ -170,13 +170,13 @@ assert.equal(r.headers.get('etag'), '"origin-tmp-v1"');
 assert.equal(r.headers.get('x-origin-only'), 'keep-me');
 assert.equal(await r.text(), origin.assetBody);
 
-// G. 预置资源（无源站头）→ 仅按扩展名兜底 content-type，不注入安全头
+// G. 预置资源（无源站头）→ 按扩展名兜底 content-type，并按 _headers 规范补齐安全头
 store.set('assets/index-abc.js', { bytes: toBytes('console.log(2)'), customMetadata: {}, httpMetadata: {} });
 cacheStore.clear();
 r = await call('/assets/index-abc.js');
 assert.equal(r.headers.get('content-type'), 'text/javascript; charset=utf-8');
-assert.equal(r.headers.get('x-frame-options'), null);
-assert.equal(r.headers.get('x-content-type-options'), null);
+assert.equal(r.headers.get('x-frame-options'), 'SAMEORIGIN', '快照路径应补齐 _headers 安全头');
+assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
 assert.equal(r.headers.get('accept-ranges'), 'bytes');
 
 // H. Range 请求 → 206 且带 content-range

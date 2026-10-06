@@ -9,6 +9,7 @@ const PortalPricing = () => import('./views/portal/PortalPricing.vue')
 const PortalRegister = () => import('./views/portal/PortalRegister.vue')
 const PortalDocs = () => import('./views/portal/PortalDocs.vue')
 const StaticContact = () => import('./views/portal/StaticContact.vue')
+const PortalQuickstart = () => import('./views/portal/PortalQuickstart.vue')
 
 const portalRoutes = [
   {
@@ -76,6 +77,14 @@ const fullRoutes = [
   { path: '/account', component: () => import('./views/AdminProfile.vue'), meta: { requiresAuth: true, title: '账号中心', noindex: true } },
   { path: '/developers', component: () => import('./views/Developers.vue'), meta: { requiresAuth: true, title: '开发者管理', noindex: true } },
   { path: '/stats', component: () => import('./views/Stats.vue'), meta: { requiresAuth: true, title: '调用统计', noindex: true } },
+  {
+    path: '/guide/quickstart',
+    component: PortalQuickstart,
+    meta: {
+      title: '快速上手',
+      description: '五分钟跑通 MediaCut API：获取 API Key、调用同步图片剪辑接口、提交异步 AI 任务、轮询状态并下载结果，含 curl 示例与错误码速查。'
+    }
+  },
   { path: '/api-keys', redirect: '/register' }
 ]
 
@@ -200,6 +209,47 @@ function routeJsonLd(path) {
           position: 3,
           name: '轮询状态并下载结果',
           text: '轮询 GET /api/v1/tasks/{task_id}，status 变为 succeeded 后通过 GET /api/v1/result/{task_id}/{filename} 下载结果。'
+        }
+      ]
+    }
+  }
+  if (path === '/guide/quickstart') {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name: '五分钟跑通 MediaCut API',
+      totalTime: 'P0DT5M',
+      tool: 'curl',
+      step: [
+        {
+          '@type': 'HowToStep',
+          position: 1,
+          name: '获取 API Key',
+          text: '注册或邮件申请获取 API Key 与 100 点免费额度，所有接口使用 Authorization: Bearer 请求头认证。'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 2,
+          name: '调用同步接口',
+          text: 'POST /api/v1/image/edit 携带图片与处理参数，直接返回处理结果，1 点/次。'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 3,
+          name: '提交异步 AI 任务',
+          text: 'POST /api/v1/ai/image/generate 提交文生图任务，立即返回 task_id。'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 4,
+          name: '轮询任务状态',
+          text: 'GET /api/v1/tasks/{task_id} 每 3-5 秒轮询一次，status 变为 succeeded 表示完成。'
+        },
+        {
+          '@type': 'HowToStep',
+          position: 5,
+          name: '下载结果文件',
+          text: 'GET /api/v1/result/{task_id}/{filename} 下载处理结果，链接经过鉴权。'
         }
       ]
     }

@@ -86,17 +86,58 @@ if [[ "$SKIP_UPLOAD" != "1" ]]; then
   echo "==> 确保 R2 桶存在: $BUCKET"
   npx --yes wrangler r2 bucket create "$BUCKET" 2>/dev/null || true
 
+  # 带重试的对象上传：网络抖动时最多重试 3 次，全部失败则终止
+  r2_put() {
+    local key="$1" file="$2" ct="$3" attempt=1
+    while true; do
+      if npx --yes wrangler r2 object put "$BUCKET/$key" \
+        --file "$file" --content-type "$ct" --remote --force >/dev/null 2>&1; then
+        return 0
+      fi
+      if [[ $attempt -ge 3 ]]; then
+        echo "上传失败: $key（已重试 3 次）" >&2
+        return 1
+      fi
+      echo "    上传失败，5 秒后重试 ($key, 第 $attempt 次)" >&2
+      attempt=$((attempt + 1))
+      sleep 5
+    done
+  }
+
+  # 可压缩类型：上传原始对象的同时生成 .gz / .br 预压缩副本（Worker 按客户端能力协商）
+  if command -v brotli >/dev/null 2>&1; then
+    HAS_BROTLI=1
+  else
+    HAS_BROTLI=0
+    echo "    （未安装 brotli，跳过 .br 副本，仅上传 .gz）"
+  fi
+  COMPRESS_RE='\.(html|js|mjs|css|json|map|txt|xml|svg|webmanifest)$'
+  TMP_DIR="$(mktemp -d)"
+  trap 'rm -rf "$TMP_DIR"' EXIT
+
   echo "==> 上传 dist → R2 ($BUCKET)"
   count=0
   while IFS= read -r -d '' file; do
     rel="${file#"$DIST_DIR"/}"
     ct="$(content_type_for "$rel")"
-    npx --yes wrangler r2 object put "$BUCKET/$rel" \
-      --file "$file" --content-type "$ct" --remote --force >/dev/null
+    r2_put "$rel" "$file" "$ct"
     count=$((count + 1))
     echo "    $rel  ($ct)"
+
+    if [[ "$rel" =~ $COMPRESS_RE ]]; then
+      gzip -9 -c "$file" > "$TMP_DIR/gz.bin"
+      r2_put "$rel.gz" "$TMP_DIR/gz.bin" "$ct"
+      count=$((count + 1))
+      echo "    $rel.gz  ($ct, gzip)"
+      if [[ "$HAS_BROTLI" == "1" ]]; then
+        brotli -q 11 -c "$file" > "$TMP_DIR/br.bin"
+        r2_put "$rel.br" "$TMP_DIR/br.bin" "$ct"
+        count=$((count + 1))
+        echo "    $rel.br  ($ct, brotli)"
+      fi
+    fi
   done < <(find "$DIST_DIR" -type f -print0 | sort -z)
-  echo "==> 已上传 $count 个文件"
+  echo "==> 已上传 $count 个对象（含压缩副本）"
 fi
 
 if [[ "$SKIP_DEPLOY" != "1" ]]; then

@@ -4,6 +4,7 @@
     <div style="flex: 1"></div>
     <el-menu-item v-if="!STATIC_ONLY" index="/playground" style="font-weight: 600">在线试用</el-menu-item>
     <el-menu-item index="/pricing">定价</el-menu-item>
+    <el-menu-item index="/guide/quickstart">快速上手</el-menu-item>
     <el-menu-item index="/docs">接入文档</el-menu-item>
     <el-menu-item v-if="!STATIC_ONLY" index="/swagger">API 文档</el-menu-item>
     <el-menu-item index="/register">申请 API Key</el-menu-item>

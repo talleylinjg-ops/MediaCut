@@ -1,0 +1,4 @@
+Contact: mailto:saas@didimedia.com
+Expires: 2027-10-06T00:00:00.000Z
+Preferred-Languages: zh-CN, en
+Canonical: https://mediacut.chacha.asia/.well-known/security.txt
