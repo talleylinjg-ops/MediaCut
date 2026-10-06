@@ -1,6 +1,7 @@
 fastapi>=0.110,<1.0
 uvicorn[standard]>=0.29,<1.0
 sqlalchemy>=2.0,<3.0
+psycopg2-binary>=2.9
 pillow>=10.0
 numpy>=1.26
 opencv-python-headless>=4.9
@@ -9,8 +10,3 @@ pyjwt>=2.8
 httpx>=0.27
 python-dotenv>=1.0
 edge-tts>=7.0
-faster-whisper>=1.0
-rembg>=2.0
-onnxruntime>=1.17
-pytest>=8.0
-psycopg2-binary>=2.9

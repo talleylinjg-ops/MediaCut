@@ -1,10 +1,11 @@
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.config import RESULT_DIR
+from app.core import storage
 from app.core.security import authenticate_developer
 from app.database import get_db
 from app.models import Developer, Task
@@ -41,8 +42,17 @@ def download_result(
         raise HTTPException(status_code=400, detail="invalid filename")
 
     path = os.path.join(RESULT_DIR, task_id, filename)
+
+    redirect_url = storage.signed_file_url(task_id, filename)
+    if redirect_url:
+        return RedirectResponse(redirect_url, status_code=302)
+
     if not os.path.isfile(path):
-        raise HTTPException(status_code=404, detail="result file not found")
+        data = storage.fetch_result(task_id, filename)
+        if data is None:
+            raise HTTPException(status_code=404, detail="result file not found")
+        ext = os.path.splitext(filename)[1].lower()
+        return Response(content=data, media_type=MIME_MAP.get(ext, "application/octet-stream"))
 
     ext = os.path.splitext(filename)[1].lower()
     return FileResponse(path, media_type=MIME_MAP.get(ext, "application/octet-stream"))

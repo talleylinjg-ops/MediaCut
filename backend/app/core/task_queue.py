@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from app import models
 from app.config import RESULT_DIR, TASK_TTL_HOURS
+from app.core import storage
 from app.database import SessionLocal
 from app.services import ai_service, chat_service
 
@@ -55,6 +56,7 @@ def run_task(task_id: int) -> None:
             if result.get("filename"):
                 task.result_url = os.path.join(task.task_id, result["filename"])
             db.commit()
+            storage.upload_result(task.task_id, task_dir)
             return
 
         result = ai_service.run_ai_task(task.task_type, params, task_dir)
@@ -64,6 +66,7 @@ def run_task(task_id: int) -> None:
         task.result_kind = result.get("kind")
         task.result_text = result.get("text")
         db.commit()
+        storage.upload_result(task.task_id, task_dir)
     except Exception as exc:
         task = db.get(models.Task, task_id)
         if task is not None:
@@ -90,6 +93,7 @@ def cleanup_expired_tasks() -> None:
                         os.remove(os.path.join(task_dir, f))
                     except OSError:
                         pass
+            storage.delete_result(task.task_id)
     finally:
         db.close()
 

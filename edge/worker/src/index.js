@@ -359,6 +359,53 @@ function passthrough(resp) {
   });
 }
 
+const FILE_RE = /^\/files\/([0-9a-f]{32})\/([A-Za-z0-9._-]+)$/;
+
+async function hmacHex(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return [...new Uint8Array(sig)]
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 32);
+}
+
+async function serveFile(url, env, path) {
+  const m = FILE_RE.exec(path);
+  if (!m) return new Response('not found', { status: 404 });
+  const [, taskId, filename] = m;
+
+  const secret = env.FILE_SIGN_SECRET;
+  if (!secret) return new Response('files not configured', { status: 503 });
+
+  const exp = Number(url.searchParams.get('exp') || 0);
+  const sig = url.searchParams.get('sig') || '';
+  if (!Number.isFinite(exp) || exp <= Date.now() / 1000) {
+    return new Response('link expired', { status: 403 });
+  }
+  const expected = await hmacHex(secret, `results/${taskId}/${filename}:${exp}`);
+  if (expected.length !== sig.length || expected !== sig) {
+    return new Response('invalid signature', { status: 403 });
+  }
+
+  const obj = await env.R2RESULTS.get(`results/${taskId}/${filename}`);
+  if (!obj) return new Response('result expired', { status: 404 });
+
+  const headers = new Headers();
+  headers.set('Content-Type', mimeFor(filename));
+  headers.set('Content-Length', String(obj.size));
+  headers.set('Cache-Control', 'private, max-age=300');
+  headers.set('x-served-from', 'r2-results');
+  return new Response(obj.body, { headers });
+}
+
 export default {
   /**
    * @param {Request} request
@@ -375,6 +422,7 @@ export default {
       path = url.pathname;
     }
 
+    if (path.startsWith('/files/')) return serveFile(url, env, path);
     if (isOriginPath(path)) return proxyToOrigin(request, env);
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return proxyToOrigin(request, env);

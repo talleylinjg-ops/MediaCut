@@ -32,3 +32,10 @@ AUDIO_ALLOWED_FORMATS = {"audio/mpeg", "audio/wav", "audio/ogg", "audio/flac", "
 
 DEFAULT_QUOTA_LIMIT = 1000
 TASK_TTL_HOURS = 24
+
+CF_API_TOKEN = os.getenv("CF_API_TOKEN", "")
+CF_ACCOUNT_ID = os.getenv("CF_ACCOUNT_ID", "")
+R2_RESULT_BUCKET = os.getenv("R2_RESULT_BUCKET", "")
+R2_RESULT_PREFIX = os.getenv("R2_RESULT_PREFIX", "results")
+FILE_SIGN_SECRET = os.getenv("FILE_SIGN_SECRET", "")
+PUBLIC_FILES_BASE = os.getenv("PUBLIC_FILES_BASE", "https://mediacut.chacha.asia")

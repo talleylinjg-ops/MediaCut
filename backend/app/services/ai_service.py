@@ -36,7 +36,18 @@ def _get_matting_session():
     return _matting_session
 
 
+def _require_local_model(module: str, capability: str) -> None:
+    try:
+        __import__(module)
+    except ImportError:
+        raise HTTPException(
+            status_code=503,
+            detail=f"{capability}依赖本地模型，当前部署未启用该能力",
+        )
+
+
 def run_matting(input_path: str, output_dir: str) -> str:
+    _require_local_model("rembg", "人像抠图")
     from rembg import remove
 
     with open(input_path, "rb") as f:
@@ -77,6 +88,7 @@ def _get_whisper():
 
 
 def run_asr(input_path: str, output_dir: str) -> dict:
+    _require_local_model("faster_whisper", "语音识别")
     try:
         segments, _ = _get_whisper().transcribe(input_path, beam_size=5)
     except Exception:

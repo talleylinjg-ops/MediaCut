@@ -27,3 +27,10 @@ REVALIDATE_HTML = "0"
 binding = "STATIC"
 bucket_name = "didimedia-mediacut-static"
 preview_bucket_name = "didimedia-mediacut-static"
+
+# 任务结果桶：/files/{task_id}/{filename} 签名直链从这里读
+# FILE_SIGN_SECRET 用 `wrangler secret put FILE_SIGN_SECRET` 注入（与后端一致）
+[[r2_buckets]]
+binding = "R2RESULTS"
+bucket_name = "didimedia-mediacut-results"
+preview_bucket_name = "didimedia-mediacut-results"
