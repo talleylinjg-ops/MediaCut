@@ -188,3 +188,6 @@ edge/worker/node_modules/
 # 本地交付产物（含数据库明文 Key，禁止入库）
 mediacut-export-*
 media-db-*
+
+# VPS 生产凭据
+edge/vps.env
