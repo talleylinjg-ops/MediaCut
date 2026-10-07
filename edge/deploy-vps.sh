@@ -67,7 +67,7 @@ systemctl daemon-reload
 systemctl enable mediacut >/dev/null
 REMOTE
 
-echo "==> 4/4 启动与健康检查"
+echo "==> 4/5 启动与健康检查"
 $SSH "$HOST" bash -s <<'REMOTE'
 systemctl restart mediacut
 sleep 4
@@ -75,4 +75,8 @@ systemctl is-active mediacut
 curl -sf http://127.0.0.1:8000/health && echo " <- health OK"
 REMOTE
 
+echo "==> 5/5 Seed SAAS 开发者账号（didi AI 对接用）"
+$SSH "$HOST" bash -c "cd $REMOTE_DIR/backend && set -a && . $REMOTE_DIR/.env && set +a && .venv/bin/python scripts/seed_saas.py"
+
 echo "==> 完成。下一步：把 Worker 的 ORIGIN 指向 http://<该VPS_IP>:8000 并重新部署 Worker"
+echo "==> SAAS 验证：curl http://<VPS_IP>:8000/api/v1/dev/key/info -H 'Authorization: Bearer <SAAS_KEY>'"
