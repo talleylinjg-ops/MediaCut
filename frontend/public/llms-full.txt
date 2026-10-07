@@ -32,6 +32,23 @@ MediaCut API is a one-stop HTTP API platform for image, audio, and AI media proc
 - `tts` 用 `text`；`matting` / `enhance` / `asr` 用 `file`
 - 所有请求头带 `Authorization: Bearer <API_KEY>`
 
+## 场景与接口对照
+
+| 需求场景 | 接口 | 价格 |
+|---------|------|------|
+| 头像裁切、商品图压缩与水印 | `POST /api/v1/image/edit` | 1 点/次 |
+| 播客剪片头、合并录音片段 | `POST /api/v1/audio/edit` | 2 点/次 |
+| 证件照/模特图去背景换底 | `POST /api/v1/ai/matting` | 10 点/次 |
+| 老照片放大去噪、商品图增强 | `POST /api/v1/ai/enhance` | 15 点/次 |
+| 会议录音转文字、播客字幕 | `POST /api/v1/ai/asr` | 10 点/次 |
+| 短视频配音、播报语音生成 | `POST /api/v1/ai/tts` | 5 点/次 |
+| 文章配图、创意插画生成 | `POST /api/v1/ai/t2i` | 默认免费渠道不扣点；ModelScope 渠道 10 点/次 |
+| 商品图换背景、改风格 | `POST /api/v1/ai/i2i` | 15 点/次 |
+| 提示词生成短视频（画面+运镜） | `POST /api/v1/ai/video` | 20 点/次 |
+| 自然语言一句话处理图文音频 | `POST /api/v1/ai/chat` | 10 点/次 |
+| 查询任务状态 | `GET /api/v1/tasks/{task_id}` | 不计费 |
+| 下载任务结果文件 | `GET /api/v1/result/{task_id}/{filename}` | 不计费 |
+
 ## 计费与额度
 
 - 注册即赠 100 点免费额度，注册后即时获得 API Key

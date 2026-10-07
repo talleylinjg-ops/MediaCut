@@ -80,6 +80,48 @@
         <li><strong>企业内部系统</strong>：截图处理、水印标注、素材格式归一化，统一接入一个 API。</li>
       </ul>
 
+      <h2 style="font-size: 20px; margin: 40px 0 12px">能力详解</h2>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">图片剪辑 API（1 点/次）</h3>
+      <p style="margin: 0">
+        通过 POST /api/v1/image/edit 一个请求完成图片裁切、按宽高缩放、旋转，16 种滤镜（黑白、复古、暖调、冷调、锐化等），文字或图片水印叠加，以及 PNG/JPEG/WebP/BMP 格式转换；参数以 JSON 数组传入，可任意组合串行处理。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">音频剪辑 API（2 点/次）</h3>
+      <p style="margin: 0">
+        通过 POST /api/v1/audio/edit 完成音频按时间段裁剪、多段拼接、音量增益或衰减与 MP3/WAV 等格式转换，适合播客后期、通知音生成与语音素材整理。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">人像抠图 API（10 点/次）</h3>
+      <p style="margin: 0">
+        AI 自动分离人像与背景，输出透明背景 PNG 或自定义背景图，适合证件照处理、电商模特图换背景与社交应用头像装饰；提交图片 URL 后异步处理，任务完成即下载结果。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">画质增强 API（15 点/次）</h3>
+      <p style="margin: 0">
+        AI 超分辨率与降噪：把低分辨率、有噪点的图片放大并重建细节，适合老照片修复、商品图提升清晰度与素材二次利用。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">语音识别 API（10 点/次）</h3>
+      <p style="margin: 0">
+        上传 MP3/WAV 音频，返回转写文本；适合会议录音整理、播客字幕生成与客服通话质检场景。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">语音合成 API（5 点/次）</h3>
+      <p style="margin: 0">
+        输入文本生成自然语音（MP3/WAV），适合短视频配音、播报音生成与无障碍朗读功能。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">文生图 API（10 点/次）</h3>
+      <p style="margin: 0">
+        输入中文或英文提示词生成图片；请求默认走免费生成渠道（Pollinations）不扣点，由 ModelScope Qwen-Image 渠道处理时扣 10 点，适合文章配图、素材灵感与创意设计。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">图生图编辑 API（15 点/次）</h3>
+      <p style="margin: 0">
+        上传参考图并附带编辑指令（如「把背景换成海滩」「改成水彩风格」），AI 基于原图生成编辑结果，适合商品图变体与素材二次创作。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">文生视频 API（20 点/次）</h3>
+      <p style="margin: 0">
+        输入提示词生成 MP4 短视频：AI 先生成画面，再叠加程序化运镜（推拉 zoom、平移 pan），适合氛围镜头、开场素材与内容营销；如实说明——画面为静态图驱动，支持与限制详见常见问题。
+      </p>
+      <h3 style="font-size: 16px; margin: 20px 0 6px">对话式剪辑 API（10 点/次）</h3>
+      <p style="margin: 0">
+        用自然语言描述处理需求（如「把这张图裁成 1:1 并加水印」「这段音频剪掉前 10 秒」），AI 解析指令并自动编排图片/音频处理流程，适合无开发背景的运营人员与自动化工作流。
+      </p>
+
       <h2 style="font-size: 20px; margin: 40px 0 12px">常见问题</h2>
       <el-collapse>
         <el-collapse-item title="MediaCut API 是什么？" name="faq-what">

@@ -28,7 +28,7 @@
 
       <h2 style="font-size: 20px; margin: 40px 0 12px">第 2 步：提交异步 AI 任务（文生图，10 点/次）</h2>
       <p>AI 能力为异步任务：提交后立即返回 task_id，不阻塞你的程序：</p>
-      <pre class="code">curl -X POST https://mediacut.chacha.asia/api/v1/ai/image/generate \
+      <pre class="code">curl -X POST https://mediacut.chacha.asia/api/v1/ai/t2i \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"一只在雪山上看日出的橘猫，插画风格"}'

@@ -35,6 +35,14 @@ const portalRoutes = [
       title: '接入文档',
       description: 'MediaCut API 接入文档：认证方式、请求示例、异步任务流程与接口说明。'
     }
+  },
+  {
+    path: '/guide/quickstart',
+    component: PortalQuickstart,
+    meta: {
+      title: '快速上手',
+      description: '五分钟跑通 MediaCut API：获取 API Key、调用同步图片剪辑接口、提交异步 AI 任务、轮询状态并下载结果，含 curl 示例与错误码速查。'
+    }
   }
 ]
 
@@ -77,14 +85,6 @@ const fullRoutes = [
   { path: '/account', component: () => import('./views/AdminProfile.vue'), meta: { requiresAuth: true, title: '账号中心', noindex: true } },
   { path: '/developers', component: () => import('./views/Developers.vue'), meta: { requiresAuth: true, title: '开发者管理', noindex: true } },
   { path: '/stats', component: () => import('./views/Stats.vue'), meta: { requiresAuth: true, title: '调用统计', noindex: true } },
-  {
-    path: '/guide/quickstart',
-    component: PortalQuickstart,
-    meta: {
-      title: '快速上手',
-      description: '五分钟跑通 MediaCut API：获取 API Key、调用同步图片剪辑接口、提交异步 AI 任务、轮询状态并下载结果，含 curl 示例与错误码速查。'
-    }
-  },
   { path: '/api-keys', redirect: '/register' }
 ]
 
@@ -237,7 +237,7 @@ function routeJsonLd(path) {
           '@type': 'HowToStep',
           position: 3,
           name: '提交异步 AI 任务',
-          text: 'POST /api/v1/ai/image/generate 提交文生图任务，立即返回 task_id。'
+          text: 'POST /api/v1/ai/t2i 提交文生图任务，立即返回 task_id。'
         },
         {
           '@type': 'HowToStep',
