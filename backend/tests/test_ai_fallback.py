@@ -65,3 +65,32 @@ def test_t2i_modelscope_supports_async_task_id(monkeypatch):
     data = ai_service._t2i_modelscope("一只猫", 768, 768)
 
     assert data == _png_bytes()
+
+
+def test_local_model_missing_reports_uninstalled_dependency(monkeypatch):
+    from conftest import REAL_LOCAL_MODEL_MISSING
+
+    monkeypatch.setattr(ai_service, "local_model_missing", REAL_LOCAL_MODEL_MISSING)
+    # 模拟依赖未安装：sys.modules 中置 None 会让 __import__ 抛 ImportError
+    import sys
+
+    monkeypatch.setitem(sys.modules, "rembg", None)
+    monkeypatch.setitem(sys.modules, "faster_whisper", None)
+
+    assert ai_service.local_model_missing("matting") is not None
+    assert "人像抠图" in ai_service.local_model_missing("matting")
+    assert "画质增强" in ai_service.local_model_missing("enhance")
+    assert "语音识别" in ai_service.local_model_missing("asr")
+    assert ai_service.local_model_missing("t2i") is None
+    assert ai_service.local_model_missing("unknown") is None
+
+
+def test_local_model_missing_returns_none_when_installed(monkeypatch):
+    from conftest import REAL_LOCAL_MODEL_MISSING
+
+    import sys
+    import types
+
+    monkeypatch.setattr(ai_service, "local_model_missing", REAL_LOCAL_MODEL_MISSING)
+    monkeypatch.setitem(sys.modules, "rembg", types.ModuleType("rembg"))
+    assert ai_service.local_model_missing("matting") is None

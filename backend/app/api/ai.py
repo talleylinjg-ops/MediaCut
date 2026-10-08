@@ -193,12 +193,18 @@ def submit_task(
         if file is None:
             raise HTTPException(status_code=400, detail="image file is required")
         image_service.validate_image(file.content_type or "", file.size or 0)
+        missing = ai_service.local_model_missing(task_type)
+        if missing:
+            raise HTTPException(status_code=503, detail=missing)
         ext = (file.filename or "image.png").rsplit(".", 1)[-1].lower() or "png"
         input_path = _save_upload(file, ext)
     elif task_type == "asr":
         if file is None:
             raise HTTPException(status_code=400, detail="audio file is required")
         audio_service.validate_audio(file.content_type or "", file.size or 0)
+        missing = ai_service.local_model_missing(task_type)
+        if missing:
+            raise HTTPException(status_code=503, detail=missing)
         ext = (file.filename or "audio.wav").rsplit(".", 1)[-1].lower() or "wav"
         input_path = _save_upload(file, ext)
     else:

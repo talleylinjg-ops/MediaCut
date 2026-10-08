@@ -139,6 +139,26 @@ def test_ai_tts_requires_text():
     assert resp.status_code == 400
 
 
+def test_ai_submit_returns_503_when_local_model_missing(monkeypatch):
+    """本地模型缺失时提交阶段即 503，调用方无需等待轮询才得知能力不可用。"""
+    import sys
+
+    from conftest import REAL_LOCAL_MODEL_MISSING
+    from app.services import ai_service
+
+    monkeypatch.setattr(ai_service, "local_model_missing", REAL_LOCAL_MODEL_MISSING)
+    monkeypatch.setitem(sys.modules, "rembg", None)
+
+    key, _ = register_charged()
+    resp = client.post(
+        "/api/v1/ai/matting",
+        headers={"Authorization": f"Bearer {key}"},
+        files={"file": ("a.png", make_image_bytes(), "image/png")},
+    )
+    assert resp.status_code == 503
+    assert "本地模型" in resp.json()["detail"]
+
+
 def test_quota_exceeded_returns_429():
     key, _ = register()
     db = SessionLocal()

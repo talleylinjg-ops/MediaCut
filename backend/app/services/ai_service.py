@@ -26,6 +26,22 @@ def _ensure_wav(input_path: str, output_dir: str) -> str:
 
 _matting_session = None
 
+# 本地模型依赖：这些任务类型在无 GPU/重依赖的部署（如容器版）需要降级
+LOCAL_MODEL_REQUIREMENTS = {"matting": "rembg", "enhance": "rembg", "asr": "faster_whisper"}
+LOCAL_MODEL_CAPABILITIES = {"matting": "人像抠图", "enhance": "画质增强", "asr": "语音识别"}
+
+
+def local_model_missing(task_type: str) -> str | None:
+    """提交阶段的能力预检：本地模型缺失时返回提示文案（可直接作为 503 detail）。"""
+    module = LOCAL_MODEL_REQUIREMENTS.get(task_type)
+    if not module:
+        return None
+    try:
+        __import__(module)
+    except ImportError:
+        return f"{LOCAL_MODEL_CAPABILITIES[task_type]}依赖本地模型，当前部署未启用该能力"
+    return None
+
 
 def _get_matting_session():
     global _matting_session
