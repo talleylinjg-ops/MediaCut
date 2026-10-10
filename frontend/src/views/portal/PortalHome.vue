@@ -54,11 +54,6 @@
           </el-card>
         </el-col>
       </el-row>
-      <div v-if="!STATIC_ONLY" style="margin-top: 32px">
-        <el-button type="primary" size="large" @click="$router.push('/register')">立即申请 API Key</el-button>
-        <el-button size="large" @click="$router.push('/docs')">查看接入文档</el-button>
-      </div>
-
       <h2 style="font-size: 20px; margin: 40px 0 12px">为什么选择 MediaCut API</h2>
       <ul style="line-height: 1.9; padding-left: 20px; margin: 0">
         <li><strong>开箱即用</strong>：无需部署 GPU 服务器或安装模型依赖，一个 HTTP 请求即可完成图片裁切、人像抠图、语音识别等处理。</li>
