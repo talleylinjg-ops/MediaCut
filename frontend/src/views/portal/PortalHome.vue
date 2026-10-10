@@ -54,9 +54,8 @@
           </el-card>
         </el-col>
       </el-row>
-      <div style="margin-top: 32px">
-        <el-button v-if="!STATIC_ONLY" type="primary" size="large" @click="$router.push('/register')">立即申请 API Key</el-button>
-        <el-button v-else type="primary" size="large" tag="a" href="mailto:saas@didimedia.com?subject=MediaCut%20API%20Key%20%E7%94%B3%E8%AF%B7">邮件申请 API Key</el-button>
+      <div v-if="!STATIC_ONLY" style="margin-top: 32px">
+        <el-button type="primary" size="large" @click="$router.push('/register')">立即申请 API Key</el-button>
         <el-button size="large" @click="$router.push('/docs')">查看接入文档</el-button>
       </div>
 
