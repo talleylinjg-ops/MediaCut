@@ -305,6 +305,9 @@ function acceptsEncoding(request) {
  * 压缩路径绕过 caches.default，避免按 URL 缓存时混淆不同编码的响应。
  */
 async function serveCompressed(request, env, key) {
+  // 线上浏览器反馈乱码：自管压缩体在 CF 边缘的编码协商行为存疑，先禁用协商走原始对象，
+  // 待在真实环境定位（客户端 DevTools 的 content-encoding/体前几字节）后再启用。
+  return null;
   if (request.method !== 'GET' || request.headers.has('range')) return null;
   const enc = acceptsEncoding(request);
   if (!enc.br && !enc.gzip) return null;
